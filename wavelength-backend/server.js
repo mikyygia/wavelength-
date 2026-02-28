@@ -2,6 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import signalsRouter from './routes/signals.js';
+import staticRouter from './routes/static.js';
+import db from './db/database.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -12,26 +14,28 @@ app.use(express.json());
 
 // Routes
 app.use('/api/signals', signalsRouter);
+app.use('/api/static', staticRouter);
 
-// The mood-atmosphere endpoint is nested oddly — let's add a top-level alias
+// ─── GET /api/mood-atmosphere ───
 app.get('/api/mood-atmosphere', (req, res) => {
-    // Forward to the signals router handler
-    // We'll import db directly here for simplicity
-    import('./db/database.js').then(({ default: db }) => {
-        try {
-            const data = db.prepare(`
-        SELECT mood, COUNT(*) as count
-        FROM signals
-        WHERE expires_at > datetime('now')
-        GROUP BY mood
-      `).all();
-            const total = data.reduce((sum, d) => sum + d.count, 0);
-            res.json({ moods: data, total });
-        } catch (err) {
-            console.error('GET /api/mood-atmosphere error:', err);
-            res.status(500).json({ error: 'failed to get mood data' });
-        }
-    });
+    try {
+        const { lat, lng, radius } = req.query;
+        let query = `
+      SELECT mood, COUNT(*) as count
+      FROM signals
+      WHERE expires_at > datetime('now')
+    `;
+        const params = [];
+
+        query += ` GROUP BY mood`;
+
+        const data = db.prepare(query).all(...params);
+        const total = data.reduce((sum, d) => sum + d.count, 0);
+        res.json({ moods: data, total });
+    } catch (err) {
+        console.error('GET /api/mood-atmosphere error:', err);
+        res.status(500).json({ error: 'failed to get mood data' });
+    }
 });
 
 // Health check

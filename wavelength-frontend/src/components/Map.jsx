@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { useMapEvents, MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
-import { moodColors, moodEmojis, getSignalOpacity, isFadingSoon } from '../utils/moodColors';
+import { moodColors, moodEmojis, getSignalOpacity } from '../utils/moodColors';
+import { severityColors, staticTypes } from '../utils/staticUtils';
 
-// Fix default marker icon issue with Leaflet + bundlers
+// Fix default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -11,7 +11,7 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// Create custom pin icon for each mood
+// Signal pin icon
 function createMoodIcon(mood, opacity) {
     const color = moodColors[mood] || '#C0CEEB';
     const emoji = moodEmojis[mood] || '📍';
@@ -34,7 +34,32 @@ function createMoodIcon(mood, opacity) {
     });
 }
 
-// Map click handler component
+// Static report pin icon (angular, warning-style)
+function createStaticIcon(type, severity, status) {
+    const color = severityColors[severity] || '#FF4444';
+    const typeInfo = staticTypes[type] || staticTypes.other;
+    const resolved = status === 'resolved';
+
+    return L.divIcon({
+        className: 'static-pin-icon',
+        html: `
+      <div class="static-pin-wrapper" style="opacity: ${resolved ? 0.35 : 1}">
+        <div class="static-pin-shape" style="
+          border: 2px solid ${color};
+          box-shadow: 0 0 12px ${color}88;
+        ">
+          <span class="static-pin-symbol">${typeInfo.icon}</span>
+          ${resolved ? '<div class="resolved-check">✓</div>' : ''}
+        </div>
+        ${severity === 'critical' && !resolved ? '<div class="static-pin-pulse" style="border-color: ' + color + '"></div>' : ''}
+      </div>
+    `,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+    });
+}
+
+// Map click handler
 function MapClickHandler({ onMapClick }) {
     useMapEvents({
         click: (e) => {
@@ -44,22 +69,31 @@ function MapClickHandler({ onMapClick }) {
     return null;
 }
 
-export default function CampusMap({ signals, onMapClick, onSignalClick, dominantMood }) {
-    // Default center — you can adjust to your campus
-    // Using a generic campus location (UC Davis as example)
-    const defaultCenter = [38.5382, -121.7617];
-    const defaultZoom = 16;
-
+export default function CampusMap({
+    signals,
+    reports,
+    onMapClick,
+    onSignalClick,
+    onReportClick,
+    dominantMood,
+    mode,
+    center,
+}) {
     const glowColor = dominantMood ? moodColors[dominantMood] : '#C0CEEB';
+    const showSignals = mode !== 'static';
+    const showReports = mode !== 'signals';
+    const dimSignals = mode === 'static';
+    const dimReports = mode === 'signals';
 
     return (
         <div className="map-container" style={{ '--map-glow': glowColor }}>
             <div className="map-grid-overlay" />
             <MapContainer
-                center={defaultCenter}
-                zoom={defaultZoom}
+                center={[center.lat, center.lng]}
+                zoom={16}
                 className="campus-map"
-                zoomControl={false}
+                zoomControl={true}
+                key={`${center.lat}-${center.lng}`}
             >
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -67,17 +101,36 @@ export default function CampusMap({ signals, onMapClick, onSignalClick, dominant
                 />
                 <MapClickHandler onMapClick={onMapClick} />
 
-                {signals.map(signal => {
+                {/* Signal pins */}
+                {showSignals && signals.map(signal => {
                     const opacity = getSignalOpacity(signal.created_at, signal.expires_at);
-                    const icon = createMoodIcon(signal.mood, opacity);
+                    const finalOpacity = dimSignals ? opacity * 0.35 : opacity;
+                    const icon = createMoodIcon(signal.mood, finalOpacity);
 
                     return (
                         <Marker
-                            key={signal.id}
+                            key={`sig-${signal.id}`}
                             position={[signal.lat, signal.lng]}
                             icon={icon}
                             eventHandlers={{
                                 click: () => onSignalClick(signal),
+                            }}
+                        />
+                    );
+                })}
+
+                {/* Static report pins */}
+                {showReports && reports.map(report => {
+                    const icon = createStaticIcon(report.type, report.severity, report.status);
+
+                    return (
+                        <Marker
+                            key={`rep-${report.id}`}
+                            position={[report.lat, report.lng]}
+                            icon={icon}
+                            opacity={dimReports ? 0.35 : 1}
+                            eventHandlers={{
+                                click: () => onReportClick(report),
                             }}
                         />
                     );
