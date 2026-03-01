@@ -31,6 +31,7 @@ export default function SecurityTab({
     const [timeFilter, setTimeFilter] = useState('24h');
     const [typeFilter, setTypeFilter] = useState('all');
     const [showNews, setShowNews] = useState(true);
+    const [showResolved, setShowResolved] = useState(false);
 
     const { score, activeReports } = instability;
     const pulse = getPulseLevel(score);
@@ -222,8 +223,14 @@ export default function SecurityTab({
             {/* Resolved Today */}
             {resolvedToday.length > 0 && (
                 <div className="security-section">
-                    <div className="security-section-header">── resolved today ({resolvedToday.length}) ──</div>
-                    {resolvedToday.map(r => (
+                    <button
+                        className="security-section-header security-section-toggle"
+                        onClick={() => setShowResolved((v) => !v)}
+                    >
+                        <span>── resolved today ({resolvedToday.length}) ──</span>
+                        <span>{showResolved ? '▾' : '▸'}</span>
+                    </button>
+                    {showResolved && resolvedToday.map(r => (
                         <button
                             key={r.id}
                             className="security-report-item resolved"

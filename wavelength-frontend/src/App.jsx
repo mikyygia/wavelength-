@@ -7,7 +7,7 @@ import StaticReportForm from './components/static/StaticReportForm';
 import Sidebar from './components/layout/Sidebar';
 import FeedPanel from './components/layout/FeedPanel';
 import AIChatbox from './components/shared/AIChatbox';
-import RadiusPreview from './components/shared/RadiusPreview';
+import AddressSearch from './components/shared/AddressSearch';
 import { useSignals } from './hooks/useSignals';
 import { useMoodAtmosphere } from './hooks/useMoodAtmosphere';
 import { useStaticReports } from './hooks/useStaticReports';
@@ -22,6 +22,7 @@ import './App.css';
 function App() {
   const geocoder = useGeocoder();
   const center = geocoder.location;
+  const hasValidCenter = Number.isFinite(center?.lat) && Number.isFinite(center?.lng);
   const radiusMeters = center?.radius ?? 2000;
 
   const { signals, loading, dropSignal, reactToSignal } = useSignals(center, radiusMeters);
@@ -78,11 +79,6 @@ function App() {
 
   const handleTogglePrefs = () => {
     setShowPrefs((prev) => !prev);
-    if (!showPrefs) {
-      setFeedCollapsed(false);
-      setActiveView('dashboard');
-      setFeedTab('preferences');
-    }
   };
 
   const handleMapClick = (latlng) => {
@@ -138,7 +134,7 @@ function App() {
   }, []);
 
   const panelOpen = !feedCollapsed && activeView === 'dashboard';
-  const prefsTabActive = feedTab === 'preferences';
+  const prefsTabActive = showPrefs;
 
   return (
     <div className="app-shell" data-theme={theme}>
@@ -147,6 +143,8 @@ function App() {
         onViewChange={handleViewChange}
         onTogglePrefs={handleTogglePrefs}
         showPrefs={showPrefs}
+        theme={theme}
+        onThemeToggle={toggleTheme}
       />
 
       <FeedPanel
@@ -167,8 +165,6 @@ function App() {
         collapsed={feedCollapsed || activeView === 'map'}
         onCollapse={() => setFeedCollapsed(true)}
         geocoder={geocoder}
-        theme={theme}
-        onThemeToggle={toggleTheme}
         myDrops={myDrops}
         onEditDrop={editDrop}
         onDeleteDrop={deleteDrop}
@@ -176,6 +172,16 @@ function App() {
         feedTab={feedTab}
         onFeedTabChange={setFeedTab}
       />
+
+      {showPrefs && (
+        <div className="prefs-popover">
+          <div className="prefs-popover-header">
+            <span>preferences</span>
+            <button className="close-btn" onClick={() => setShowPrefs(false)}>✕</button>
+          </div>
+          <AddressSearch geocoder={geocoder} />
+        </div>
+      )}
 
       {(feedCollapsed || activeView === 'map') && (
         <button
@@ -210,7 +216,11 @@ function App() {
           </div>
         </div>
 
-        {loading ? (
+        {!hasValidCenter ? (
+          <div className="loading-state">
+            <span>select a valid location to continue.</span>
+          </div>
+        ) : loading ? (
           <div className="loading-state">
             <div className="loading-pulse" />
             <span>scanning for signals...</span>
@@ -227,15 +237,8 @@ function App() {
             center={center}
             theme={theme}
             onMapReady={handleMapReady}
-          />
-        )}
-
-        {mapInstance && prefsTabActive && (
-          <RadiusPreview
-            map={mapInstance}
-            center={center}
-            radius={radiusMeters}
-            visible={prefsTabActive}
+            showPreviewRadius={prefsTabActive}
+            previewRadius={radiusMeters}
           />
         )}
 
@@ -243,11 +246,13 @@ function App() {
           <button
             className="float-btn add-btn"
             onClick={() => {
+              if (!hasValidCenter) return;
               const pos = { lat: center.lat, lng: center.lng };
               if (navTab === 'security') setShowStaticForm(pos);
               else setDropPosition(pos);
             }}
             title={navTab === 'security' ? 'report incident' : 'drop signal'}
+            disabled={!hasValidCenter}
           >
             +
           </button>
@@ -287,6 +292,7 @@ function App() {
           report={selectedReport}
           onConfirm={confirmReport}
           onResolve={resolveReport}
+          canResolve={myDrops.some(d => d.kind === 'static' && d.data?.id === selectedReport.id)}
           onClose={() => setSelectedReport(null)}
         />
       )}

@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
+import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 
-export default function RadiusPreview({ map, center, radius, visible }) {
+export default function RadiusPreview({ center, radius, visible }) {
+    const map = useMap();
     const circleRef = useRef(null);
     const timerRef = useRef(null);
 

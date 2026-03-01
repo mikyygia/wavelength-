@@ -9,10 +9,21 @@ export default function SignalCard({ signal, onReact, onClose }) {
     const [replyText, setReplyText] = useState('');
     const [showReplies, setShowReplies] = useState(false);
     const [reacted, setReacted] = useState({});
+    const REACTED_KEY = 'wl-reacted-signals';
 
     const songEmbed = getSongEmbed(signal.song_url);
     const fading = isFadingSoon(signal.created_at, signal.expires_at);
     const color = moodColors[signal.mood] || '#C0CEEB';
+
+    useEffect(() => {
+        try {
+            const all = JSON.parse(localStorage.getItem(REACTED_KEY) || '{}');
+            const reactedForSignal = all[signal.id] || {};
+            setReacted(reactedForSignal);
+        } catch {
+            setReacted({});
+        }
+    }, [signal.id]);
 
     useEffect(() => {
         if (showReplies) {
@@ -23,9 +34,19 @@ export default function SignalCard({ signal, onReact, onClose }) {
     }, [showReplies, signal.id]);
 
     const handleReact = async (type) => {
-        if (reacted[type]) return;
-        await onReact(signal.id, type);
-        setReacted(prev => ({ ...prev, [type]: true }));
+        const action = reacted[type] ? 'remove' : 'add';
+        await onReact(signal.id, type, action);
+        setReacted(prev => {
+            const next = { ...prev, [type]: action === 'add' };
+            try {
+                const all = JSON.parse(localStorage.getItem(REACTED_KEY) || '{}');
+                all[signal.id] = next;
+                localStorage.setItem(REACTED_KEY, JSON.stringify(all));
+            } catch {
+                // ignore localStorage failures
+            }
+            return next;
+        });
     };
 
     const handleReply = async (e) => {

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { severityColors, staticTypes, getTimeAgo } from '../../utils/staticUtils';
 
-export default function StaticCard({ report, onConfirm, onResolve, onClose }) {
+export default function StaticCard({ report, onConfirm, onResolve, canResolve = false, onClose }) {
     const [confirmed, setConfirmed] = useState(false);
     const [showResolve, setShowResolve] = useState(false);
     const [resolveNote, setResolveNote] = useState('');
@@ -9,11 +9,28 @@ export default function StaticCard({ report, onConfirm, onResolve, onClose }) {
     const typeInfo = staticTypes[report.type] || staticTypes.other;
     const sevColor = severityColors[report.severity];
     const isResolved = report.status === 'resolved';
+    const CONFIRMED_KEY = 'wl-confirmed-reports';
+
+    useEffect(() => {
+        try {
+            const saved = JSON.parse(localStorage.getItem(CONFIRMED_KEY) || '{}');
+            if (saved[report.id]) setConfirmed(true);
+        } catch {
+            // ignore localStorage failures
+        }
+    }, [report.id]);
 
     const handleConfirm = async () => {
         if (confirmed) return;
         await onConfirm(report.id);
         setConfirmed(true);
+        try {
+            const saved = JSON.parse(localStorage.getItem(CONFIRMED_KEY) || '{}');
+            saved[report.id] = true;
+            localStorage.setItem(CONFIRMED_KEY, JSON.stringify(saved));
+        } catch {
+            // ignore localStorage failures
+        }
     };
 
     const handleResolve = async () => {
@@ -24,7 +41,9 @@ export default function StaticCard({ report, onConfirm, onResolve, onClose }) {
     let newsLinks = [];
     try {
         newsLinks = JSON.parse(report.news_links || '[]');
-    } catch { }
+    } catch (err) {
+        console.warn('failed to parse report news links:', err);
+    }
 
     return (
         <div className="signal-card-overlay" onClick={onClose}>
@@ -102,18 +121,22 @@ export default function StaticCard({ report, onConfirm, onResolve, onClose }) {
                             onClick={handleConfirm}
                             disabled={confirmed}
                         >
-                            {confirmed ? '✓ confirmed' : '👁️ I see this too'}
+                            {confirmed ? '✓ upvoted' : '⬆ support resolution'}
                         </button>
-                        <button
-                            className="resolve-btn"
-                            onClick={() => setShowResolve(!showResolve)}
-                        >
-                            ✓ mark resolved
-                        </button>
+                        {canResolve ? (
+                            <button
+                                className="resolve-btn"
+                                onClick={() => setShowResolve(!showResolve)}
+                            >
+                                ✓ mark resolved
+                            </button>
+                        ) : (
+                            <span className="resolve-lock-note">only the original reporter can resolve this alert.</span>
+                        )}
                     </div>
                 )}
 
-                {showResolve && (
+                {showResolve && canResolve && (
                     <div className="resolve-form">
                         <input
                             className="signal-input"

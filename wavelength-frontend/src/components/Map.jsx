@@ -3,6 +3,7 @@ import { useMapEvents, MapContainer, TileLayer, Marker, useMap } from 'react-lea
 import L from 'leaflet';
 import { moodColors, moodEmojis, getSignalOpacity } from '../utils/moodColors';
 import { severityColors, staticTypes } from '../utils/staticUtils';
+import RadiusPreview from './shared/RadiusPreview';
 
 const TILE_URLS = {
     dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -75,7 +76,7 @@ function MapClickHandler({ onMapClick }) {
     return null;
 }
 
-// Expose Leaflet map instance to parent for flyTo / RadiusPreview
+// Expose Leaflet map instance to parent for flyTo
 function MapRefSetter({ onMapReady }) {
     const map = useMap();
     useEffect(() => {
@@ -96,7 +97,20 @@ export default function CampusMap({
     center,
     theme = 'light',
     onMapReady,
+    showPreviewRadius = false,
+    previewRadius = 2000,
 }) {
+    const hasValidCenter = Number.isFinite(center?.lat) && Number.isFinite(center?.lng);
+    if (!hasValidCenter) {
+        return (
+            <div className="map-container">
+                <div className="loading-state">
+                    <span>selecting location...</span>
+                </div>
+            </div>
+        );
+    }
+
     const glowColor = dominantMood ? moodColors[dominantMood] : '#C0CEEB';
     const showSignals = mode !== 'static';
     const showReports = mode !== 'signals';
@@ -120,6 +134,10 @@ export default function CampusMap({
                 />
                 {onMapReady && <MapRefSetter onMapReady={onMapReady} />}
                 <MapClickHandler onMapClick={onMapClick} />
+
+                {showPreviewRadius && (
+                    <RadiusPreview center={center} radius={previewRadius} visible={showPreviewRadius} />
+                )}
 
                 {/* Signal pins */}
                 {showSignals && signals.map(signal => {

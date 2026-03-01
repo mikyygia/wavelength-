@@ -12,7 +12,18 @@ export function useGeocoder() {
     const [location, setLocation] = useState(() => {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
-            return saved ? JSON.parse(saved) : DEFAULT_LOCATION;
+            if (!saved) return DEFAULT_LOCATION;
+            const parsed = JSON.parse(saved);
+            const lat = Number(parsed?.lat);
+            const lng = Number(parsed?.lng);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return DEFAULT_LOCATION;
+            return {
+                ...DEFAULT_LOCATION,
+                ...parsed,
+                lat,
+                lng,
+                radius: Number.isFinite(Number(parsed?.radius)) ? Number(parsed.radius) : DEFAULT_LOCATION.radius,
+            };
         } catch {
             return DEFAULT_LOCATION;
         }

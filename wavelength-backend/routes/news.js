@@ -34,6 +34,37 @@ function normalizeArticle(article) {
     };
 }
 
+async function fetchNewsApiArticles(query, pageSize) {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0];
+
+    const params = new URLSearchParams({
+        q: query,
+        from: sevenDaysAgo,
+        sortBy: 'publishedAt',
+        language: 'en',
+        searchIn: 'title,description',
+        pageSize: String(pageSize),
+    });
+
+    const response = await fetch(`${NEWSAPI_BASE}?${params}`, {
+        headers: {
+            Accept: 'application/json',
+            'X-Api-Key': NEWSAPI_KEY,
+        },
+        signal: AbortSignal.timeout(8000),
+    });
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || `upstream status ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.articles || [];
+}
+
 router.get('/', async (req, res) => {
     try {
         const { label = 'Irvine', limit = 8 } = req.query;
@@ -53,41 +84,9 @@ router.get('/', async (req, res) => {
             return res.json(cached.data);
         }
 
-        const q = `("${locationTerm}") AND (${CRIME_KEYWORDS}) NOT (football OR soccer OR basketball OR baseball OR hockey OR nfl OR nba OR mlb OR nhl OR ncaa OR playoff OR game OR match)`;
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split('T')[0];
-
-        const params = new URLSearchParams({
-            q,
-            from: sevenDaysAgo,
-            sortBy: 'publishedAt',
-            language: 'en',
-            searchIn: 'title,description',
-            pageSize: String(pageSize),
-        });
-
-        const response = await fetch(`${NEWSAPI_BASE}?${params}`, {
-            headers: {
-                Accept: 'application/json',
-                'X-Api-Key': NEWSAPI_KEY,
-            },
-            signal: AbortSignal.timeout(8000),
-        });
-
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            console.warn(`[news] NewsAPI returned ${response.status}: ${err.message || 'unknown error'}`);
-            return res.status(502).json({
-                articles: [],
-                source: 'error',
-                error: err.message || `upstream status ${response.status}`,
-            });
-        }
-
-        const data = await response.json();
+        const strictQ = `("${locationTerm}") AND (${CRIME_KEYWORDS}) NOT (football OR soccer OR basketball OR baseball OR hockey OR nfl OR nba OR mlb OR nhl OR ncaa OR playoff OR game OR match)`;
         const seen = new Set();
-        const articles = (data.articles || [])
+        let articles = (await fetchNewsApiArticles(strictQ, pageSize))
             .filter((a) => a.title && !a.title.includes('[Removed]') && a.url)
             .map(normalizeArticle)
             .filter((a) => {
@@ -102,9 +101,47 @@ router.get('/', async (req, res) => {
                 return true;
             });
 
+        // Fallback for low-volume areas: broaden query, then rely on text filters.
+        if (articles.length === 0) {
+            const broadQ = `("${locationTerm}") AND (crime OR police OR arrest OR investigation OR incident)`;
+            articles = (await fetchNewsApiArticles(broadQ, pageSize))
+                .filter((a) => a.title && !a.title.includes('[Removed]') && a.url)
+                .map(normalizeArticle)
+                .filter((a) => {
+                    const text = `${a.title || ''} ${a.description || ''}`;
+                    if (!CRIME_TERMS_RE.test(text)) return false;
+                    if (SPORTS_TERMS_RE.test(text)) return false;
+                    return true;
+                })
+                .filter((a) => {
+                    if (seen.has(a.url)) return false;
+                    seen.add(a.url);
+                    return true;
+                });
+        }
+
+        // Last-resort fallback for very low-signal locations.
+        if (articles.length === 0) {
+            const globalQ = `(crime OR police OR arrest OR investigation OR shooting OR robbery) NOT (football OR soccer OR basketball OR baseball OR hockey OR nfl OR nba OR mlb OR nhl OR ncaa OR playoff OR game OR match)`;
+            articles = (await fetchNewsApiArticles(globalQ, pageSize))
+                .filter((a) => a.title && !a.title.includes('[Removed]') && a.url)
+                .map(normalizeArticle)
+                .filter((a) => {
+                    const text = `${a.title || ''} ${a.description || ''}`;
+                    if (!CRIME_TERMS_RE.test(text)) return false;
+                    if (SPORTS_TERMS_RE.test(text)) return false;
+                    return true;
+                })
+                .filter((a) => {
+                    if (seen.has(a.url)) return false;
+                    seen.add(a.url);
+                    return true;
+                });
+        }
+
         const result = {
             articles,
-            total: data.totalResults || 0,
+            total: articles.length,
             locationTerm,
             source: 'newsapi',
         };

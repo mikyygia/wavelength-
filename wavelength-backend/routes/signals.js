@@ -73,15 +73,21 @@ router.post('/', (req, res) => {
 router.patch('/:id/react', (req, res) => {
     try {
         const { id } = req.params;
-        const { reaction } = req.body;
+        const { reaction, action = 'add' } = req.body;
 
         if (!reaction || !VALID_REACTIONS.includes(reaction)) {
             return res.status(400).json({ error: `reaction must be one of: ${VALID_REACTIONS.join(', ')}` });
         }
+        if (!['add', 'remove'].includes(action)) {
+            return res.status(400).json({ error: 'action must be add or remove' });
+        }
 
         const column = `reaction_${reaction}`;
+        const deltaExpr = action === 'add'
+            ? `${column} + 1`
+            : `CASE WHEN ${column} > 0 THEN ${column} - 1 ELSE 0 END`;
         const result = db.prepare(`
-      UPDATE signals SET ${column} = ${column} + 1
+      UPDATE signals SET ${column} = ${deltaExpr}
       WHERE id = ? AND expires_at > datetime('now')
     `).run(id);
 

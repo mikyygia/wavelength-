@@ -27,6 +27,15 @@ export function SettingsIcon({ size = 16, strokeWidth = 1.8 }) {
     );
 }
 
+export function ThemeIcon({ size = 16, strokeWidth = 1.8 }) {
+    return (
+        <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.5" />
+            <path d="M12 2v2.2M12 19.8V22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2 12h2.2M19.8 12H22M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6" />
+        </svg>
+    );
+}
+
 export function WaveIcon({ size = 14, strokeWidth = 1.8 }) {
     return (
         <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

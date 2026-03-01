@@ -40,9 +40,9 @@ export function useSignals(center, radiusMeters) {
         }
     };
 
-    const reactToSignal = async (signalId, reaction) => {
+    const reactToSignal = async (signalId, reaction, action = 'add') => {
         try {
-            const res = await axios.patch(`${API_BASE}/signals/${signalId}/react`, { reaction });
+            const res = await axios.patch(`${API_BASE}/signals/${signalId}/react`, { reaction, action });
             setSignals(prev => prev.map(s => s.id === signalId ? res.data : s));
             return res.data;
         } catch (err) {

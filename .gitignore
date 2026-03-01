@@ -27,6 +27,5 @@ dist-ssr
 DEPLOYMENT.md
 MULTIUSER_TEST_PLAN.md
 
-
 wavelength-backend/node_modules/
 wavelength-frontend/node_modules/

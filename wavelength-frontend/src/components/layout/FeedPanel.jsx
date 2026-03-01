@@ -4,8 +4,6 @@ import { staticTypes, severityColors, getTimeAgo, distanceMiles, formatDistance 
 import CampusPulse from '../static/CampusPulse';
 import ModeToggle from './ModeToggle';
 import SecurityTab from '../static/SecurityTab';
-import AddressSearch from '../shared/AddressSearch';
-import ThemeToggle from '../shared/ThemeToggle';
 import { AlertIcon, NewsIcon, WaveIcon } from '../shared/UIIcons';
 
 const MOOD_CONTEXT = {
@@ -35,8 +33,6 @@ export default function FeedPanel({
     collapsed,
     onCollapse,
     geocoder,
-    theme,
-    onThemeToggle,
     myDrops,
     onEditDrop,
     onDeleteDrop,
@@ -166,17 +162,6 @@ export default function FeedPanel({
                         onOpenStaticForm={onOpenStaticForm}
                     />
                 )}
-                {tab === 'preferences' && (
-                    <div className="preferences-tab">
-                        <ThemeToggle theme={theme} onToggle={onThemeToggle} />
-                        {geocoder && (
-                            <AddressSearch
-                                geocoder={geocoder}
-                                className="prefs-address-search"
-                            />
-                        )}
-                    </div>
-                )}
             </div>
 
             <div className="feed-resize-handle" onMouseDown={onResizeMouseDown} title="drag to resize" />
@@ -236,12 +221,12 @@ function SummaryTab({
                     <CampusPulse data={instability} />
                 </div>
                 <div className="summary-box">
-                    <div className="summary-box-label"><WaveIcon size={12} /> area mood</div>
+                    <div className="summary-box-label"><WaveIcon size={12} /> dominant mood</div>
                     <div className="summary-mood-compact">
                         <span className="summary-mood-icon">{moodEmoji}</span>
                         <span className="summary-mood-text">{moodLabel}</span>
                     </div>
-                    {hasMoodSignals && (
+                    {/* {hasMoodSignals && (
                         <div className="atmosphere-bar" style={{ marginTop: 6 }}>
                             {moodPercentages?.map(m => (
                                 <div
@@ -252,10 +237,11 @@ function SummaryTab({
                                 />
                             ))}
                         </div>
-                    )}
+                    )} */}
+                    <br />
                     <div className="summary-mood-sub">
                         {hasMoodSignals
-                            ? `Dominant mood: ${dominantMood} (${dominantCount} of ${totalSignals} signals)`
+                            ? `${dominantCount} of ${totalSignals} signals`
                             : 'No active mood signals in this area yet'}
                     </div>
                 </div>
@@ -263,7 +249,7 @@ function SummaryTab({
 
             <div className="summary-snapshot">
                 <div className="summary-snapshot-title">
-                    {totalIncidents} community · {newsLast24h.length} local news (last 24h)
+                    {totalIncidents} community reports
                 </div>
                 <div className="summary-snapshot-grid">
                     {snapshotRows.length === 0 && <div className="summary-snapshot-empty">none</div>}
