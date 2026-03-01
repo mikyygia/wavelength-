@@ -1,0 +1,36 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="40" x2="1240" y2="680" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#10131E"/>
+      <stop offset="1" stop-color="#1D2745"/>
+    </linearGradient>
+    <radialGradient id="spot1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(314 182) rotate(23.7) scale(393 280)">
+      <stop stop-color="#FACC15" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#FACC15" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="spot2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(999 588) rotate(-36.4) scale(386 272)">
+      <stop stop-color="#7DD3FC" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#7DD3FC" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <rect width="1280" height="720" fill="url(#spot1)"/>
+  <rect width="1280" height="720" fill="url(#spot2)"/>
+
+  <g opacity="0.25">
+    <path d="M0 120H1280M0 240H1280M0 360H1280M0 480H1280M0 600H1280" stroke="#A8B8D8" stroke-width="1"/>
+    <path d="M160 0V720M320 0V720M480 0V720M640 0V720M800 0V720M960 0V720M1120 0V720" stroke="#A8B8D8" stroke-width="1"/>
+  </g>
+
+  <g>
+    <circle cx="640" cy="312" r="34" stroke="#FACC15" stroke-width="4"/>
+    <circle cx="640" cy="312" r="68" stroke="#FACC15" stroke-opacity="0.8" stroke-width="4"/>
+    <circle cx="640" cy="312" r="102" stroke="#FACC15" stroke-opacity="0.6" stroke-width="4"/>
+    <circle cx="640" cy="312" r="136" stroke="#FACC15" stroke-opacity="0.35" stroke-width="4"/>
+  </g>
+
+  <rect x="320" y="430" width="640" height="116" rx="10" fill="#0E1425" fill-opacity="0.9" stroke="#44537E"/>
+  <text x="640" y="482" text-anchor="middle" fill="#E7ECFF" font-family="'JetBrains Mono','IBM Plex Mono',monospace" font-size="68" font-weight="700" letter-spacing="1">wavelength</text>
+  <text x="640" y="516" text-anchor="middle" fill="#B7C3E6" font-family="'DM Sans','Inter',sans-serif" font-size="24">real-time neighborhood pulse</text>
+</svg>

@@ -57,12 +57,18 @@ function App() {
   }, [setMap]);
 
   const [navTab, setNavTab] = useState('notes');
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     if (navTab === 'notes') setMode('signals');
     else if (navTab === 'security') setMode('static');
     else setMode('all');
   }, [navTab]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setShowSplash(false), 1300);
+    return () => clearTimeout(timeout);
+  }, []);
 
   const handleModeChange = (newMode) => {
     setMode(newMode);
@@ -139,6 +145,23 @@ function App() {
 
   const panelOpen = !feedCollapsed && activeView === 'dashboard';
   const prefsTabActive = showPrefs;
+
+  if (showSplash) {
+    return (
+      <div className="app-splash" data-theme={theme}>
+        <div className="app-splash-grid" />
+        <div className="app-splash-card">
+          <div className="app-splash-logo" aria-hidden="true">
+            <span className="wave wave-a" />
+            <span className="wave wave-b" />
+            <span className="wave wave-c" />
+          </div>
+          <h1 className="app-splash-title">wavelength</h1>
+          <p className="app-splash-subtitle">real-time neighborhood pulse</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell" data-theme={theme}>

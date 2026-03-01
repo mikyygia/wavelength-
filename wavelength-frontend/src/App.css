@@ -1,2 +1,99 @@
 /* App-specific overrides — imported via App.jsx */
 /* Keeping this minimal, main styles in index.css */
+
+.app-splash {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 18% 16%, color-mix(in oklab, var(--yellow) 24%, transparent), transparent 38%),
+    radial-gradient(circle at 82% 84%, color-mix(in oklab, var(--mist) 40%, transparent), transparent 42%),
+    linear-gradient(160deg, var(--bg) 0%, var(--bg-elevated) 100%);
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.app-splash-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--border) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--border) 55%, transparent) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(circle at center, #000 35%, transparent 88%);
+  opacity: 0.4;
+}
+
+.app-splash-card {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 28px 34px;
+  border: 1px solid var(--border-strong);
+  background: color-mix(in oklab, var(--bg-elevated) 90%, transparent);
+  box-shadow: 0 16px 56px rgba(0, 0, 0, 0.26);
+}
+
+.app-splash-logo {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+}
+
+.wave {
+  position: absolute;
+  border: 2px solid color-mix(in oklab, var(--yellow) 80%, var(--text));
+  border-radius: 999px;
+  animation: splash-pulse 1.4s ease-out infinite;
+}
+
+.wave-a {
+  width: 18px;
+  height: 18px;
+  animation-delay: 0s;
+}
+
+.wave-b {
+  width: 34px;
+  height: 34px;
+  animation-delay: 0.18s;
+}
+
+.wave-c {
+  width: 52px;
+  height: 52px;
+  animation-delay: 0.34s;
+}
+
+.app-splash-title {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(30px, 5vw, 52px);
+  text-transform: lowercase;
+  letter-spacing: 1px;
+  color: var(--text);
+}
+
+.app-splash-subtitle {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--text-muted);
+  font-size: 13px;
+  text-transform: lowercase;
+  letter-spacing: 0.2px;
+}
+
+@keyframes splash-pulse {
+  0% {
+    opacity: 1;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
