@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE } from '../config/api';
 
-const API = 'http://localhost:3001/api';
-
-export function useMoodAtmosphere() {
+export function useMoodAtmosphere(center, radiusMeters) {
     const [atmosphere, setAtmosphere] = useState({ moods: [], total: 0 });
 
     useEffect(() => {
         const fetch = async () => {
             try {
-                const res = await axios.get(`${API}/mood-atmosphere`);
+                const params = new URLSearchParams({
+                    lat: center?.lat ?? '',
+                    lng: center?.lng ?? '',
+                    radius: radiusMeters ?? 2000,
+                });
+                const res = await axios.get(`${API_BASE}/mood-atmosphere?${params}`);
                 setAtmosphere(res.data);
             } catch (err) {
                 console.error('failed to fetch atmosphere:', err);
@@ -18,7 +22,7 @@ export function useMoodAtmosphere() {
         fetch();
         const interval = setInterval(fetch, 30000);
         return () => clearInterval(interval);
-    }, []);
+    }, [center?.lat, center?.lng, radiusMeters]);
 
     // Compute dominant mood
     const dominantMood = atmosphere.moods.length > 0

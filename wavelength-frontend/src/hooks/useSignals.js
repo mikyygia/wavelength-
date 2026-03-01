@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-
-const API = 'http://localhost:3001/api';
+import { API_BASE } from '../config/api';
 
 export function useSignals(center, radiusMeters) {
     const [signals, setSignals] = useState([]);
@@ -15,7 +14,7 @@ export function useSignals(center, radiusMeters) {
                 lng: center.lng,
                 radius: radiusMeters ?? 2000,
             });
-            const res = await axios.get(`${API}/signals?${params}`);
+            const res = await axios.get(`${API_BASE}/signals?${params}`);
             setSignals(res.data);
         } catch (err) {
             console.error('failed to fetch signals:', err);
@@ -32,7 +31,7 @@ export function useSignals(center, radiusMeters) {
 
     const dropSignal = async (signalData) => {
         try {
-            const res = await axios.post(`${API}/signals`, signalData);
+            const res = await axios.post(`${API_BASE}/signals`, signalData);
             setSignals(prev => [res.data, ...prev]);
             return res.data;
         } catch (err) {
@@ -43,7 +42,7 @@ export function useSignals(center, radiusMeters) {
 
     const reactToSignal = async (signalId, reaction) => {
         try {
-            const res = await axios.patch(`${API}/signals/${signalId}/react`, { reaction });
+            const res = await axios.patch(`${API_BASE}/signals/${signalId}/react`, { reaction });
             setSignals(prev => prev.map(s => s.id === signalId ? res.data : s));
             return res.data;
         } catch (err) {

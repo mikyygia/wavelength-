@@ -16,9 +16,9 @@ export default function CampusPulse({ data }) {
         if (s === 0) return 'no reported activity nearby';
         if (s <= 20) return 'minimal activity in your area';
         if (s <= 40) return 'some activity - stay aware';
-        if (s <= 60) return '↑ higher than usual activity';
-        if (s <= 80) return '⚠ significant activity reported';
-        return '🚨 high activity - exercise caution';
+        if (s <= 60) return 'higher than usual activity';
+        if (s <= 80) return 'significant activity reported';
+        return 'high activity - exercise caution';
     };
 
     return (

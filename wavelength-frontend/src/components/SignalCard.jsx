@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { moodColors, moodEmojis, isFadingSoon } from '../utils/moodColors';
 import { getSongEmbed } from '../utils/songEmbed';
-
-const API = 'http://localhost:3001/api';
+import { API_BASE } from '../config/api';
 
 export default function SignalCard({ signal, onReact, onClose }) {
     const [replies, setReplies] = useState([]);
@@ -17,7 +16,7 @@ export default function SignalCard({ signal, onReact, onClose }) {
 
     useEffect(() => {
         if (showReplies) {
-            axios.get(`${API}/signals/${signal.id}/replies`)
+            axios.get(`${API_BASE}/signals/${signal.id}/replies`)
                 .then(res => setReplies(res.data))
                 .catch(err => console.error(err));
         }
@@ -33,7 +32,7 @@ export default function SignalCard({ signal, onReact, onClose }) {
         e.preventDefault();
         if (!replyText.trim()) return;
         try {
-            const res = await axios.post(`${API}/signals/${signal.id}/replies`, { text: replyText.trim() });
+            const res = await axios.post(`${API_BASE}/signals/${signal.id}/replies`, { text: replyText.trim() });
             setReplies(prev => [...prev, res.data]);
             setReplyText('');
         } catch (err) {

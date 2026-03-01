@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { API_BASE } from '../config/api';
 
-const API = 'http://localhost:3001/api';
 const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 export function useCrimeData(center) {
@@ -9,7 +9,7 @@ export function useCrimeData(center) {
     const [error, setError] = useState(null);
 
     const fetchCrimes = useCallback(async () => {
-        if (!center?.lat || !center?.lng) return;
+        if (center?.lat == null || center?.lng == null) return;
 
         setLoading(true);
         setError(null);
@@ -18,10 +18,20 @@ export function useCrimeData(center) {
             const params = new URLSearchParams({
                 lat: center.lat,
                 lng: center.lng,
+                radius: center.radius ?? 2000,
                 limit: 60,
             });
-            const res = await fetch(`${API}/crimes?${params}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const res = await fetch(`${API_BASE}/crimes?${params}`);
+            if (!res.ok) {
+                let message = `HTTP ${res.status}`;
+                try {
+                    const payload = await res.json();
+                    if (payload?.error) message = payload.error;
+                } catch {
+                    // ignore JSON parse errors and keep HTTP message
+                }
+                throw new Error(message);
+            }
             const data = await res.json();
             setOfficialCrimes(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -31,7 +41,7 @@ export function useCrimeData(center) {
         } finally {
             setLoading(false);
         }
-    }, [center?.lat, center?.lng]);
+    }, [center?.lat, center?.lng, center?.radius]);
 
     useEffect(() => {
         fetchCrimes();

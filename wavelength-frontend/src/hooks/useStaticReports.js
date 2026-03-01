@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-
-const API = 'http://localhost:3001/api';
+import { API_BASE } from '../config/api';
 
 export function useStaticReports(center, radiusMeters, filtersOverride) {
     const [reports, setReports] = useState([]);
@@ -22,7 +21,7 @@ export function useStaticReports(center, radiusMeters, filtersOverride) {
                 lng: center.lng,
                 radius: radiusMeters ?? 2000,
             };
-            const res = await axios.get(`${API}/static?${new URLSearchParams(params)}`);
+            const res = await axios.get(`${API_BASE}/static?${new URLSearchParams(params)}`);
             setReports(res.data);
         } catch (err) {
             console.error('failed to fetch static reports:', err);
@@ -39,7 +38,7 @@ export function useStaticReports(center, radiusMeters, filtersOverride) {
 
     const submitReport = async (reportData) => {
         try {
-            const res = await axios.post(`${API}/static`, reportData);
+            const res = await axios.post(`${API_BASE}/static`, reportData);
             setReports(prev => [res.data, ...prev]);
             return res.data;
         } catch (err) {
@@ -50,7 +49,7 @@ export function useStaticReports(center, radiusMeters, filtersOverride) {
 
     const confirmReport = async (reportId) => {
         try {
-            const res = await axios.patch(`${API}/static/${reportId}/confirm`);
+            const res = await axios.patch(`${API_BASE}/static/${reportId}/confirm`);
             setReports(prev => prev.map(r => r.id === reportId ? res.data : r));
             return res.data;
         } catch (err) {
@@ -61,7 +60,7 @@ export function useStaticReports(center, radiusMeters, filtersOverride) {
 
     const resolveReport = async (reportId, resolutionNote) => {
         try {
-            const res = await axios.patch(`${API}/static/${reportId}/resolve`, { resolution_note: resolutionNote });
+            const res = await axios.patch(`${API_BASE}/static/${reportId}/resolve`, { resolution_note: resolutionNote });
             setReports(prev => prev.map(r => r.id === reportId ? res.data : r));
             return res.data;
         } catch (err) {

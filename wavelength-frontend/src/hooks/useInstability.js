@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-
-const API = 'http://localhost:3001/api';
+import { API_BASE } from '../config/api';
 
 export function useInstability(center, radiusMeters) {
     const [data, setData] = useState({ score: 0, label: 'calm', color: '#C0CEEB', breakdown: {}, activeReports: 0 });
@@ -14,7 +13,7 @@ export function useInstability(center, radiusMeters) {
                 lng: center.lng,
                 radius: radiusMeters ?? 2000,
             });
-            const res = await axios.get(`${API}/static/instability?${params}`);
+            const res = await axios.get(`${API_BASE}/static/instability?${params}`);
             setData(res.data);
         } catch (err) {
             console.error('failed to fetch instability:', err);

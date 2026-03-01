@@ -6,6 +6,7 @@ import ModeToggle from './ModeToggle';
 import SecurityTab from '../static/SecurityTab';
 import AddressSearch from '../shared/AddressSearch';
 import ThemeToggle from '../shared/ThemeToggle';
+import { AlertIcon, NewsIcon, WaveIcon } from '../shared/UIIcons';
 
 const MOOD_CONTEXT = {
     0: 'no reported activity nearby',
@@ -19,7 +20,9 @@ const MOOD_CONTEXT = {
 export default function FeedPanel({
     signals,
     reports,
-    officialCrimes = [],
+    crimeNews = [],
+    crimeNewsLoading = false,
+    crimeNewsError = null,
     mode,
     onModeChange,
     onSignalClick,
@@ -93,7 +96,7 @@ export default function FeedPanel({
         { key: 'activity', label: 'Activity' },
         { key: 'mydrops', label: 'History' },
         { key: 'security', label: 'Security' },
-        { key: 'preferences', label: 'Preferences' },
+        // { key: 'preferences', label: 'Preferences' },
     ];
 
     return (
@@ -121,7 +124,9 @@ export default function FeedPanel({
                         dominantMood={dominantMood}
                         moodTotal={moodTotal}
                         reports={reports}
-                        officialCrimes={officialCrimes}
+                        crimeNews={crimeNews}
+                        crimeNewsLoading={crimeNewsLoading}
+                        crimeNewsError={crimeNewsError}
                         center={geocoder?.location}
                         onFeedItemClick={onFeedItemClick}
                     />
@@ -154,7 +159,9 @@ export default function FeedPanel({
                     <SecurityTab
                         instability={instability}
                         reports={reports}
-                        officialCrimes={officialCrimes}
+                        crimeNews={crimeNews}
+                        crimeNewsLoading={crimeNewsLoading}
+                        crimeNewsError={crimeNewsError}
                         onReportClick={onReportClick}
                         onOpenStaticForm={onOpenStaticForm}
                     />
@@ -178,11 +185,18 @@ export default function FeedPanel({
 }
 
 // ─── Summary: two-row pulse + mood, snapshot grid, nearby feed ───
-function SummaryTab({ instability, moodPercentages, dominantMood, moodTotal, reports, officialCrimes = [], center, onFeedItemClick }) {
-    const moodEmoji = dominantMood ? moodEmojis[dominantMood] : '🌊';
-    const moodPct = moodPercentages?.find(m => m.mood === dominantMood)?.percentage ?? 0;
-    const moodLabel = dominantMood ? `${moodPct}% ${dominantMood} today` : 'quiet right now';
-
+function SummaryTab({
+    instability,
+    moodPercentages,
+    dominantMood,
+    moodTotal,
+    reports,
+    crimeNews = [],
+    crimeNewsLoading = false,
+    crimeNewsError = null,
+    center,
+    onFeedItemClick,
+}) {
     // Recent 24h incidents by type (numbers only)
     const last24h = reports.filter(r => Date.now() - new Date(r.created_at).getTime() < 86400000);
     const byType = last24h.reduce((acc, r) => {
@@ -192,20 +206,25 @@ function SummaryTab({ instability, moodPercentages, dominantMood, moodTotal, rep
     const typeOrder = ['threat', 'suspicious', 'harassment', 'crowd', 'infrastructure', 'other'];
     const snapshotRows = typeOrder.filter(t => byType[t] > 0).map(t => ({ type: t, count: byType[t] }));
     const totalIncidents = last24h.length;
+    const moodEmoji = dominantMood ? moodEmojis[dominantMood] : '📡';
+    const dominantEntry = moodPercentages?.find((m) => m.mood === dominantMood);
+    const dominantCount = dominantEntry?.count ?? 0;
+    const totalSignals = moodTotal ?? 0;
+    const hasMoodSignals = Boolean(dominantMood) && totalSignals > 0;
+    const moodPct = dominantEntry?.percentage ?? 0;
+    const moodLabel = hasMoodSignals
+        ? `${moodPct}% ${dominantMood} today`
+        : 'No active mood signals in this area yet';
 
-    // Official crimes in last 24h
-    const officialLast24h = officialCrimes.filter(c => Date.now() - new Date(c.created_at).getTime() < 86400000);
+    // Crime-related news in last 24h. Filters on non-crime news
+    const newsLast24h = crimeNews.filter((a) => Date.now() - new Date(a.publishedAt).getTime() < 86400000);
 
-    // Nearby — merge community reports + official crimes, sort by distance
+    // Nearby — community reports, sorted by distance
     const communityNearby = (center ? reports
         .map(r => ({ ...r, _source: 'community', _distance: distanceMiles(center.lat, center.lng, r.lat, r.lng) }))
         : reports.map(r => ({ ...r, _source: 'community', _distance: null })));
 
-    const officialNearby = (center ? officialCrimes
-        .map(c => ({ ...c, _source: 'official', _distance: distanceMiles(center.lat, center.lng, c.lat, c.lng) }))
-        : officialCrimes.map(c => ({ ...c, _source: 'official', _distance: null })));
-
-    const nearby = [...communityNearby, ...officialNearby]
+    const nearby = [...communityNearby]
         .sort((a, b) => (a._distance ?? 999) - (b._distance ?? 999))
         .slice(0, 20);
 
@@ -213,16 +232,16 @@ function SummaryTab({ instability, moodPercentages, dominantMood, moodTotal, rep
         <div className="summary-tab summary-tab-v2">
             <div className="summary-two-row">
                 <div className="summary-box">
-                    <div className="summary-box-label">⚡ campus pulse</div>
+                    <div className="summary-box-label"><AlertIcon size={12} /> current tension</div>
                     <CampusPulse data={instability} />
                 </div>
                 <div className="summary-box">
-                    <div className="summary-box-label">🌊 campus mood</div>
+                    <div className="summary-box-label"><WaveIcon size={12} /> area mood</div>
                     <div className="summary-mood-compact">
                         <span className="summary-mood-icon">{moodEmoji}</span>
                         <span className="summary-mood-text">{moodLabel}</span>
                     </div>
-                    {moodTotal > 0 && (
+                    {hasMoodSignals && (
                         <div className="atmosphere-bar" style={{ marginTop: 6 }}>
                             {moodPercentages?.map(m => (
                                 <div
@@ -234,13 +253,17 @@ function SummaryTab({ instability, moodPercentages, dominantMood, moodTotal, rep
                             ))}
                         </div>
                     )}
-                    <div className="summary-mood-sub">{instability?.activeReports ?? 0} active incidents</div>
+                    <div className="summary-mood-sub">
+                        {hasMoodSignals
+                            ? `Dominant mood: ${dominantMood} (${dominantCount} of ${totalSignals} signals)`
+                            : 'No active mood signals in this area yet'}
+                    </div>
                 </div>
             </div>
 
             <div className="summary-snapshot">
                 <div className="summary-snapshot-title">
-                    {totalIncidents} community · {officialLast24h.length} official (last 24h)
+                    {totalIncidents} community · {newsLast24h.length} local news (last 24h)
                 </div>
                 <div className="summary-snapshot-grid">
                     {snapshotRows.length === 0 && <div className="summary-snapshot-empty">none</div>}
@@ -251,36 +274,25 @@ function SummaryTab({ instability, moodPercentages, dominantMood, moodTotal, rep
                             <span className="snapshot-count">{count}</span>
                         </div>
                     ))}
-                    {officialLast24h.length > 0 && (
+                    {newsLast24h.length > 0 && (
                         <div className="summary-snapshot-row official-row">
-                            <span className="snapshot-type">🚔 police reports</span>
+                            <span className="snapshot-type"><NewsIcon size={12} /> crime news mentions</span>
                             <span className="snapshot-dots" style={{ flex: 1 }}>.</span>
-                            <span className="snapshot-count official-count">{officialLast24h.length}</span>
+                            <span className="snapshot-count official-count">{newsLast24h.length}</span>
                         </div>
                     )}
                 </div>
             </div>
 
             <div className="summary-nearby">
-                <div className="summary-nearby-title">Nearby — community + official</div>
+                <div className="summary-nearby-title">Nearby — community reports</div>
                 <div className="summary-nearby-list">
                     {nearby.map(item => {
-                        const isOfficial = item._source === 'official';
                         const typeInfo = staticTypes[item.type] || staticTypes.other;
                         const sevColor = severityColors[item.severity];
                         const distStr = item._distance != null
                             ? (item._distance < 0.1 ? `${Math.round(item._distance * 5280)} ft` : `${item._distance.toFixed(1)} mi`)
                             : '';
-
-                        if (isOfficial) {
-                            return (
-                                <div key={item.id} className="summary-nearby-item official-nearby-item">
-                                    <span className="nearby-dot" style={{ background: 'var(--mist)' }} />
-                                    <span className="nearby-type">🚔 {item.title?.slice(0, 28)}{item.title?.length > 28 ? '…' : ''}</span>
-                                    <span className="nearby-meta">{distStr} · {getTimeAgo(item.created_at)}</span>
-                                </div>
-                            );
-                        }
 
                         return (
                             <button
@@ -296,6 +308,28 @@ function SummaryTab({ instability, moodPercentages, dominantMood, moodTotal, rep
                         );
                     })}
                 </div>
+            </div>
+
+            <div className="summary-nearby" style={{ marginTop: 10 }}>
+                <div className="summary-nearby-title"><NewsIcon size={12} /> Local crime news</div>
+                {crimeNewsError && <div className="summary-snapshot-empty">news unavailable: {crimeNewsError}</div>}
+                {!crimeNewsError && crimeNewsLoading && <div className="summary-snapshot-empty">loading local news...</div>}
+                {!crimeNewsError && !crimeNewsLoading && crimeNews.length === 0 && (
+                    <div className="summary-snapshot-empty">no recent crime-related headlines for this area.</div>
+                )}
+                {!crimeNewsError && crimeNews.slice(0, 3).map((a) => (
+                    <a
+                        key={a.id}
+                        className="summary-nearby-item"
+                        href={a.url}
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        <span className="nearby-dot" style={{ background: 'var(--mist)' }} />
+                        <span className="nearby-type">{a.title?.slice(0, 64)}{a.title?.length > 64 ? '…' : ''}</span>
+                        <span className="nearby-meta">{a.source} · {getTimeAgo(a.publishedAt)}</span>
+                    </a>
+                ))}
             </div>
         </div>
     );
@@ -344,7 +378,7 @@ function ActivityTab({ signals, reports, mode, center, onSignalClick, onReportCl
     if (mode === 'signals') merged = merged.filter(i => i._kind === 'signal');
     else if (mode === 'static') merged = merged.filter(i => i._kind === 'static');
 
-    const campusLabel = center?.label ?? 'Campus';
+    const campusLabel = center?.label ?? 'Area';
 
     return (
         <div className="activity-tab">
@@ -501,4 +535,3 @@ function MyDropsTab({ drops, onEditDrop, onDeleteDrop, onSignalClick, onReportCl
         </div>
     );
 }
-

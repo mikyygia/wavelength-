@@ -8,10 +8,10 @@
 :root {
   --dusty-rose: #DAC8C7;
   --cobalt: #2A377F;
-  --yellow: #F9BD33;
-  --mist: #C0CEEB;
+  --yellow: #EAB308;
+  --mist: #A8B8D8;
   --light-blue: #ADD8E6;
-  --red: #FF4444;
+  --red: #DC2626;
 
   --bg: #0e0e12;
   --bg-elevated: #16161d;
@@ -50,6 +50,9 @@
   --text: #1a1a2e;
   --text-muted: #6b6878;
   --text-dim: #9995a0;
+  --yellow: #D97706;
+  --mist: #64748B;
+  --red: #B91C1C;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -144,7 +147,11 @@ body {
 }
 
 .sidebar-icon {
-  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sidebar-label {
@@ -2057,6 +2064,9 @@ textarea.signal-input {
 }
 
 .summary-box-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-dim);
@@ -2123,6 +2133,9 @@ textarea.signal-input {
 }
 
 .summary-nearby-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-dim);
@@ -2180,6 +2193,10 @@ textarea.signal-input {
 }
 
 .mode-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   flex: 1;
   padding: var(--space-xs) var(--space-sm);
   background: transparent;
@@ -2189,6 +2206,12 @@ textarea.signal-input {
   color: var(--text-dim);
   cursor: pointer;
   text-transform: lowercase;
+}
+
+.mode-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mode-toggle-btn:not(:last-child) {
@@ -2867,10 +2890,20 @@ textarea.signal-input {
 }
 
 .official-header-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-family: var(--font-mono);
   font-size: 9px;
   color: var(--mist);
   letter-spacing: 0.5px;
+}
+
+.inline-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
 }
 
 /* Security more results label */

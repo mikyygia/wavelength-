@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { staticTypes, severityColors, getTimeAgo } from '../../utils/staticUtils';
+import { NewsIcon } from '../shared/UIIcons';
 
 function getPulseLevel(score) {
     if (score === 0) return { label: 'calm', context: 'no reported activity nearby', color: 'var(--mist)' };
@@ -18,25 +19,18 @@ const TIME_RANGES = {
     'all': Infinity,
 };
 
-const TYPE_LABELS = {
-    all: 'all',
-    threat: 'threat',
-    harassment: 'harassment',
-    suspicious: 'suspicious',
-    crowd: 'crowd',
-    other: 'other',
-};
-
 export default function SecurityTab({
     instability,
     reports,
-    officialCrimes = [],
+    crimeNews = [],
+    crimeNewsLoading = false,
+    crimeNewsError = null,
     onReportClick,
     onOpenStaticForm,
 }) {
     const [timeFilter, setTimeFilter] = useState('24h');
     const [typeFilter, setTypeFilter] = useState('all');
-    const [showOfficial, setShowOfficial] = useState(true);
+    const [showNews, setShowNews] = useState(true);
 
     const { score, activeReports } = instability;
     const pulse = getPulseLevel(score);
@@ -63,13 +57,13 @@ export default function SecurityTab({
         return now - new Date(resolvedAt).getTime() < 86400000;
     });
 
-    // Official crimes
-    const filteredOfficial = officialCrimes.filter(c =>
-        withinTime(c.created_at) && matchesType(c.type)
+    // Local crime news
+    const filteredNews = crimeNews.filter((a) =>
+        withinTime(a.publishedAt)
     );
 
-    const officialCount7d = officialCrimes.filter(c =>
-        now - new Date(c.created_at).getTime() < 7 * 24 * 3600000
+    const newsCount7d = crimeNews.filter((a) =>
+        now - new Date(a.publishedAt).getTime() < 7 * 24 * 3600000
     ).length;
 
     return (
@@ -90,8 +84,8 @@ export default function SecurityTab({
                     </span>
                     <span className="pulse-stat-divider">·</span>
                     <span className="pulse-stat official">
-                        <span className="pulse-stat-val">{officialCount7d}</span>
-                        <span className="pulse-stat-label">official (7d)</span>
+                        <span className="pulse-stat-val">{newsCount7d}</span>
+                        <span className="pulse-stat-label">news (7d)</span>
                     </span>
                 </div>
             </div>
@@ -131,10 +125,10 @@ export default function SecurityTab({
                 <div className="filter-row">
                     <span className="filter-label">show:</span>
                     <button
-                        className={`filter-btn ${showOfficial ? 'active' : ''}`}
-                        onClick={() => setShowOfficial(v => !v)}
+                        className={`filter-btn ${showNews ? 'active' : ''}`}
+                        onClick={() => setShowNews(v => !v)}
                     >
-                        🚔 official
+                        <span className="inline-icon"><NewsIcon size={12} /></span> local news
                     </button>
                 </div>
             </div>
@@ -175,41 +169,55 @@ export default function SecurityTab({
                 })}
             </div>
 
-            {/* Official Crime Records */}
-            {showOfficial && (
+            {/* Local Crime News */}
+            {showNews && (
                 <div className="security-section">
                     <div className="security-section-header official-header">
-                        ── official records ({filteredOfficial.length}) ──
-                        <span className="official-header-sub">🚔 police data</span>
+                        ── local crime news ({filteredNews.length}) ──
+                        <span className="official-header-sub"><NewsIcon size={12} /> headlines</span>
                     </div>
-                    {filteredOfficial.length === 0 && (
+                    {crimeNewsError && (
                         <div className="security-empty">
-                            {officialCrimes.length === 0
-                                ? 'fetching official crime data...'
-                                : 'no official records match this filter.'}
+                            local news unavailable: {crimeNewsError}
                         </div>
                     )}
-                    {filteredOfficial.slice(0, 15).map(c => (
-                        <OfficialCrimeCard key={c.id} crime={c} />
+                    {!crimeNewsError && filteredNews.length === 0 && (
+                        <div className="security-empty">
+                            {crimeNewsLoading
+                                ? 'fetching local crime news...'
+                                : 'no recent crime-related headlines for this location/filter.'}
+                        </div>
+                    )}
+                    {filteredNews.slice(0, 10).map(a => (
+                        <a
+                            key={a.id}
+                            className="security-report-item"
+                            href={a.url}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <span className="security-severity-dot" style={{ background: 'var(--mist)' }} />
+                            <div className="security-report-content">
+                                <div className="security-report-title-row">
+                                    <span className="security-report-title">{a.title}</span>
+                                    <span className="source-tag official">news</span>
+                                </div>
+                                <span className="security-report-meta">
+                                    {a.source} · {getTimeAgo(a.publishedAt)}
+                                </span>
+                                {a.description && (
+                                    <div className="security-report-meta">
+                                        {a.description.slice(0, 140)}{a.description.length > 140 ? '…' : ''}
+                                    </div>
+                                )}
+                            </div>
+                        </a>
                     ))}
-                    {filteredOfficial.length > 15 && (
-                        <div className="security-more">+{filteredOfficial.length - 15} more records</div>
+                    {filteredNews.length > 10 && (
+                        <div className="security-more">+{filteredNews.length - 10} more headlines</div>
                     )}
                 </div>
             )}
-
-            {/* Related News — only if any report has news_links */}
-            {filteredCommunity.some(r => {
-                try {
-                    const links = JSON.parse(r.news_links || '[]');
-                    return Array.isArray(links) && links.length > 0;
-                } catch { return false; }
-            }) && (
-                    <div className="security-section">
-                        <div className="security-section-header">── related news ──</div>
-                        <div className="security-news-placeholder">📰</div>
-                    </div>
-                )}
 
             {/* Resolved Today */}
             {resolvedToday.length > 0 && (
@@ -241,28 +249,6 @@ export default function SecurityTab({
                 <button className="security-report-btn" onClick={onOpenStaticForm}>
                     + report something
                 </button>
-            </div>
-        </div>
-    );
-}
-
-function OfficialCrimeCard({ crime }) {
-    const sevColor = severityColors[crime.severity] || 'var(--mist)';
-    return (
-        <div className="official-crime-item">
-            <span className="security-severity-dot" style={{ background: sevColor }} />
-            <div className="security-report-content">
-                <div className="security-report-title-row">
-                    <span className="security-report-title">{crime.title}</span>
-                    <span className="source-tag official">official</span>
-                </div>
-                <span className="security-report-meta">
-                    {crime.location_label || crime.area || 'unknown area'} · {getTimeAgo(crime.created_at)}
-                </span>
-                <div className="security-report-badges">
-                    <span className="security-badge official-badge" style={{ borderColor: 'var(--mist)', color: 'var(--mist)' }}>{crime.severity}</span>
-                    <span className="security-badge official-badge">{crime.type}</span>
-                </div>
             </div>
         </div>
     );

@@ -16,7 +16,7 @@ import { useGeocoder } from './hooks/useGeocoder';
 import { useTheme } from './hooks/useTheme';
 import { useMyDrops } from './hooks/useMyDrops';
 import { useMapRef } from './hooks/useMapRef';
-import { useCrimeData } from './hooks/useCrimeData';
+import { useCrimeNews } from './hooks/useCrimeNews';
 import './App.css';
 
 function App() {
@@ -25,13 +25,13 @@ function App() {
   const radiusMeters = center?.radius ?? 2000;
 
   const { signals, loading, dropSignal, reactToSignal } = useSignals(center, radiusMeters);
-  const { dominantMood, moodPercentages, atmosphere } = useMoodAtmosphere();
+  const { dominantMood, moodPercentages, atmosphere } = useMoodAtmosphere(center, radiusMeters);
   const { reports, submitReport, confirmReport, resolveReport } = useStaticReports(center, radiusMeters);
   const instability = useInstability(center, radiusMeters);
   const { theme, toggleTheme } = useTheme();
   const { drops: myDrops, addDrop, editDrop, deleteDrop } = useMyDrops();
   const { setMap, flyTo, zoomIn, zoomOut } = useMapRef();
-  const { officialCrimes } = useCrimeData(center);
+  const { articles: crimeNews, loading: crimeNewsLoading, error: crimeNewsError } = useCrimeNews(center);
 
   const [mode, setMode] = useState('all'); // 'all' | 'signals' | 'static' for Activity tab
   const [activeView, setActiveView] = useState('dashboard');
@@ -152,7 +152,9 @@ function App() {
       <FeedPanel
         signals={signals}
         reports={reports}
-        officialCrimes={officialCrimes}
+        crimeNews={crimeNews}
+        crimeNewsLoading={crimeNewsLoading}
+        crimeNewsError={crimeNewsError}
         mode={mode}
         onModeChange={handleModeChange}
         onSignalClick={(s) => setSelectedSignal(s)}
@@ -190,7 +192,7 @@ function App() {
           <div className="map-nav-tabs">
             {[
               { key: 'notes', label: 'Notes' },
-              { key: 'security', label: '⚡ Security' },
+              { key: 'security', label: 'Security' },
               { key: 'summary', label: 'Summary' },
             ].map((t) => (
               <button
@@ -203,7 +205,7 @@ function App() {
             ))}
           </div>
           <div className="map-nav-info">
-            <span className="map-location">{center?.label ?? 'Campus'}</span>
+            <span className="map-location">{center?.label ?? 'Area'}</span>
             <span className="map-clock">{clock}</span>
           </div>
         </div>

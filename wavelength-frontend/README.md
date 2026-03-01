@@ -1,12 +1,20 @@
-# React + Vite
+# Wavelength Frontend (Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Local run
+1. Install dependencies:
+   - `npm install`
+2. Configure environment:
+   - copy `.env.example` to `.env`
+   - set `VITE_API_BASE_URL` (for local backend use `http://localhost:3001/api`)
+3. Start dev server:
+   - `npm run dev`
 
-Currently, two official plugins are available:
+## Build
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- `npm run build`
+- `npm run preview`
 
-## Expanding the ESLint configuration
+## Notes
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- API base URL is read from `VITE_API_BASE_URL`.
+- If unset, frontend falls back to `http://localhost:3001/api`.

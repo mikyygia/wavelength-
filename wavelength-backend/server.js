@@ -24,18 +24,31 @@ app.use('/api/news', newsRouter);
 app.get('/api/mood-atmosphere', (req, res) => {
     try {
         const { lat, lng, radius } = req.query;
-        let query = `
-      SELECT mood, COUNT(*) as count
-      FROM signals
-      WHERE expires_at > datetime('now')
-    `;
-        const params = [];
+        let activeSignals = db.prepare(`
+            SELECT mood, lat, lng
+            FROM signals
+            WHERE expires_at > datetime('now')
+        `).all();
 
-        query += ` GROUP BY mood`;
+        if (lat != null && lng != null && radius != null) {
+            const centerLat = parseFloat(lat);
+            const centerLng = parseFloat(lng);
+            const maxDist = parseFloat(radius);
 
-        const data = db.prepare(query).all(...params);
-        const total = data.reduce((sum, d) => sum + d.count, 0);
-        res.json({ moods: data, total });
+            if (!Number.isNaN(centerLat) && !Number.isNaN(centerLng) && !Number.isNaN(maxDist)) {
+                activeSignals = activeSignals.filter((s) => haversine(centerLat, centerLng, s.lat, s.lng) <= maxDist);
+            }
+        }
+
+        const counts = activeSignals.reduce((acc, s) => {
+            if (!s.mood) return acc;
+            acc[s.mood] = (acc[s.mood] || 0) + 1;
+            return acc;
+        }, {});
+
+        const moods = Object.entries(counts).map(([mood, count]) => ({ mood, count }));
+        const total = moods.reduce((sum, d) => sum + d.count, 0);
+        res.json({ moods, total });
     } catch (err) {
         console.error('GET /api/mood-atmosphere error:', err);
         res.status(500).json({ error: 'failed to get mood data' });
@@ -50,3 +63,12 @@ app.get('/api/health', (req, res) => {
 app.listen(PORT, () => {
     console.log(`\n⚡ wavelength backend live on http://localhost:${PORT}\n`);
 });
+
+function haversine(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const toRad = (d) => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
