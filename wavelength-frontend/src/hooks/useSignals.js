@@ -3,24 +3,29 @@ import axios from 'axios';
 
 const API = 'http://localhost:3001/api';
 
-export function useSignals() {
+export function useSignals(center, radiusMeters) {
     const [signals, setSignals] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const fetchSignals = useCallback(async () => {
+        if (!center) return;
         try {
-            const res = await axios.get(`${API}/signals`);
+            const params = new URLSearchParams({
+                lat: center.lat,
+                lng: center.lng,
+                radius: radiusMeters ?? 2000,
+            });
+            const res = await axios.get(`${API}/signals?${params}`);
             setSignals(res.data);
         } catch (err) {
             console.error('failed to fetch signals:', err);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [center?.lat, center?.lng, radiusMeters]);
 
     useEffect(() => {
         fetchSignals();
-        // Poll every 30 seconds
         const interval = setInterval(fetchSignals, 30000);
         return () => clearInterval(interval);
     }, [fetchSignals]);

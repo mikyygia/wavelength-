@@ -148,3 +148,25 @@ export function useGeocoder() {
         resetToDefault,
     };
 }
+
+// Standalone geocode for forms — does not touch global location
+export async function geocodeSearch(searchQuery) {
+    if (!searchQuery || searchQuery.trim().length < 2) return [];
+    const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery.trim())}&format=json&limit=5&addressdetails=1`,
+        {
+            headers: {
+                'User-Agent': 'Wavelength/1.0 (campus-safety-app)',
+                'Accept-Language': 'en',
+            },
+        }
+    );
+    if (!res.ok) throw new Error('Geocoder error');
+    const data = await res.json();
+    return data.map(item => ({
+        lat: parseFloat(item.lat),
+        lng: parseFloat(item.lon),
+        label: item.display_name.split(',').slice(0, 2).join(', '),
+        fullLabel: item.display_name,
+    }));
+}

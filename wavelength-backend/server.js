@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import signalsRouter from './routes/signals.js';
 import staticRouter from './routes/static.js';
+import crimesRouter from './routes/crimes.js';
 import db from './db/database.js';
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.json());
 // Routes
 app.use('/api/signals', signalsRouter);
 app.use('/api/static', staticRouter);
+app.use('/api/crimes', crimesRouter);
 
 // ─── GET /api/mood-atmosphere ───
 app.get('/api/mood-atmosphere', (req, res) => {

@@ -7,7 +7,7 @@ export default function InstabilityIndex({ data }) {
                 <span className="instability-score" style={{ color }}>{score}</span>
                 <span className="instability-max">/ 100</span>
             </div>
-            <div className="instability-bar-bg">
+            {/* <div className="instability-bar-bg">
                 <div
                     className={`instability-bar-fill ${score > 80 ? 'critical-pulse' : ''}`}
                     style={{
@@ -16,7 +16,7 @@ export default function InstabilityIndex({ data }) {
                         boxShadow: `0 0 12px ${color}88`,
                     }}
                 />
-            </div>
+            </div> */}
             <div className="instability-footer">
                 <span className="instability-label" style={{ color }}>{label}</span>
                 <span className="instability-reports">{activeReports} active</span>

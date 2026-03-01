@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import CampusMap from './components/Map';
 import DropSignalForm from './components/DropSignalForm';
 import SignalCard from './components/SignalCard';
@@ -7,48 +7,58 @@ import StaticReportForm from './components/static/StaticReportForm';
 import Sidebar from './components/layout/Sidebar';
 import FeedPanel from './components/layout/FeedPanel';
 import AIChatbox from './components/shared/AIChatbox';
-import AddressSearch from './components/shared/AddressSearch';
-import ThemeToggle from './components/shared/ThemeToggle';
+import RadiusPreview from './components/shared/RadiusPreview';
 import { useSignals } from './hooks/useSignals';
 import { useMoodAtmosphere } from './hooks/useMoodAtmosphere';
 import { useStaticReports } from './hooks/useStaticReports';
 import { useInstability } from './hooks/useInstability';
 import { useGeocoder } from './hooks/useGeocoder';
 import { useTheme } from './hooks/useTheme';
+import { useMyDrops } from './hooks/useMyDrops';
+import { useMapRef } from './hooks/useMapRef';
+import { useCrimeData } from './hooks/useCrimeData';
 import './App.css';
 
 function App() {
-  const { signals, loading, dropSignal, reactToSignal } = useSignals();
-  const { dominantMood, moodPercentages, atmosphere } = useMoodAtmosphere();
-  const { reports, submitReport, confirmReport, resolveReport } = useStaticReports();
-  const instability = useInstability();
   const geocoder = useGeocoder();
-  const { theme, toggleTheme } = useTheme();
+  const center = geocoder.location;
+  const radiusMeters = center?.radius ?? 2000;
 
-  // UI state
-  const [mode, setMode] = useState('signals'); // 'signals' | 'static' | 'summary'
-  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' | 'map'
+  const { signals, loading, dropSignal, reactToSignal } = useSignals(center, radiusMeters);
+  const { dominantMood, moodPercentages, atmosphere } = useMoodAtmosphere();
+  const { reports, submitReport, confirmReport, resolveReport } = useStaticReports(center, radiusMeters);
+  const instability = useInstability(center, radiusMeters);
+  const { theme, toggleTheme } = useTheme();
+  const { drops: myDrops, addDrop, editDrop, deleteDrop } = useMyDrops();
+  const { setMap, flyTo, zoomIn, zoomOut } = useMapRef();
+  const { officialCrimes } = useCrimeData(center);
+
+  const [mode, setMode] = useState('all'); // 'all' | 'signals' | 'static' for Activity tab
+  const [activeView, setActiveView] = useState('dashboard');
   const [feedCollapsed, setFeedCollapsed] = useState(false);
+  const [feedTab, setFeedTab] = useState('summary');
   const [showPrefs, setShowPrefs] = useState(false);
   const [showAI, setShowAI] = useState(false);
 
-  // Modal state
   const [dropPosition, setDropPosition] = useState(null);
   const [selectedSignal, setSelectedSignal] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
-  const [showStaticForm, setShowStaticForm] = useState(null); // null or {lat, lng}
+  const [showStaticForm, setShowStaticForm] = useState(null);
+  const [mapInstance, setMapInstance] = useState(null);
 
-  // Navbar tab mapping
-  const [navTab, setNavTab] = useState('notes'); // 'notes' | 'security' | 'summary'
+  const handleMapReady = useCallback((map) => {
+    setMapInstance(map);
+    setMap(map);
+  }, [setMap]);
 
-  // Sync navTab and mode
+  const [navTab, setNavTab] = useState('notes');
+
   useEffect(() => {
     if (navTab === 'notes') setMode('signals');
     else if (navTab === 'security') setMode('static');
-    else setMode('summary');
+    else setMode('all');
   }, [navTab]);
 
-  // Sync mode to navTab
   const handleModeChange = (newMode) => {
     setMode(newMode);
     if (newMode === 'signals') setNavTab('notes');
@@ -56,7 +66,6 @@ function App() {
     else setNavTab('summary');
   };
 
-  // View toggle
   const handleViewChange = (view) => {
     setActiveView(view);
     if (view === 'map') {
@@ -67,84 +76,105 @@ function App() {
     setShowPrefs(false);
   };
 
-  // Map click — context-aware
+  const handleTogglePrefs = () => {
+    setShowPrefs((prev) => !prev);
+    if (!showPrefs) {
+      setFeedCollapsed(false);
+      setActiveView('dashboard');
+      setFeedTab('preferences');
+    }
+  };
+
   const handleMapClick = (latlng) => {
-    if (mode === 'static') {
+    if (navTab === 'security' || mode === 'static') {
       setShowStaticForm(latlng);
     } else {
       setDropPosition(latlng);
     }
   };
 
-  // Drop signal
+  const handleFeedItemClick = useCallback((item) => {
+    const lat = item.lat ?? item.data?.lat;
+    const lng = item.lng ?? item.data?.lng;
+    if (lat != null && lng != null) {
+      flyTo(lat, lng, 17, 1.2);
+      setTimeout(() => {
+        if (item._kind === 'signal' || item.kind === 'signal') setSelectedSignal(item.data ?? item);
+        else setSelectedReport(item.data ?? item);
+      }, 400);
+    }
+  }, [flyTo]);
+
   const handleDrop = async (signalData) => {
     const created = await dropSignal(signalData);
-    // Save to localStorage for Notes tab
-    try {
-      const existing = JSON.parse(localStorage.getItem('wl-my-signals') || '[]');
-      existing.unshift({ ...signalData, id: created.id, created_at: created.created_at });
-      localStorage.setItem('wl-my-signals', JSON.stringify(existing.slice(0, 50)));
-    } catch { }
+    addDrop('signal', { ...created, ...signalData });
   };
 
-  // Submit static report
   const handleSubmitReport = async (reportData) => {
-    await submitReport(reportData);
+    const created = await submitReport(reportData);
+    addDrop('static', created);
   };
 
-  // Live clock
+  const handlePositionChange = useCallback((pos) => {
+    if (pos?.lat != null && pos?.lng != null) {
+      setDropPosition({ lat: pos.lat, lng: pos.lng });
+      flyTo(pos.lat, pos.lng, 17);
+    }
+  }, [flyTo]);
+
+  const handleStaticFormPositionChange = useCallback((pos) => {
+    if (pos?.lat != null && pos?.lng != null) {
+      setShowStaticForm({ lat: pos.lat, lng: pos.lng });
+      flyTo(pos.lat, pos.lng, 17);
+    }
+  }, [flyTo]);
+
   const [clock, setClock] = useState('');
   useEffect(() => {
-    const update = () => {
-      const now = new Date();
-      setClock(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    };
+    const update = () => setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     update();
     const interval = setInterval(update, 60000);
     return () => clearInterval(interval);
   }, []);
 
   const panelOpen = !feedCollapsed && activeView === 'dashboard';
+  const prefsTabActive = feedTab === 'preferences';
 
   return (
     <div className="app-shell" data-theme={theme}>
-      {/* Panel 1 — Sidebar */}
       <Sidebar
         activeView={activeView}
         onViewChange={handleViewChange}
-        onTogglePrefs={() => setShowPrefs(!showPrefs)}
+        onTogglePrefs={handleTogglePrefs}
         showPrefs={showPrefs}
       />
 
-      {/* Preferences drawer */}
-      {showPrefs && (
-        <div className="prefs-panel">
-          <div className="prefs-header">
-            <span className="prefs-title">preferences</span>
-            <button className="close-btn" onClick={() => setShowPrefs(false)}>✕</button>
-          </div>
-          <AddressSearch geocoder={geocoder} />
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
-        </div>
-      )}
-
-      {/* Panel 2 — Feed Panel */}
       <FeedPanel
         signals={signals}
         reports={reports}
+        officialCrimes={officialCrimes}
         mode={mode}
         onModeChange={handleModeChange}
         onSignalClick={(s) => setSelectedSignal(s)}
         onReportClick={(r) => setSelectedReport(r)}
+        onFeedItemClick={handleFeedItemClick}
         instability={instability}
         moodPercentages={moodPercentages}
         dominantMood={dominantMood}
-        moodTotal={atmosphere.total}
+        moodTotal={atmosphere?.total ?? 0}
         collapsed={feedCollapsed || activeView === 'map'}
         onCollapse={() => setFeedCollapsed(true)}
+        geocoder={geocoder}
+        theme={theme}
+        onThemeToggle={toggleTheme}
+        myDrops={myDrops}
+        onEditDrop={editDrop}
+        onDeleteDrop={deleteDrop}
+        onOpenStaticForm={() => setShowStaticForm({ lat: center.lat, lng: center.lng })}
+        feedTab={feedTab}
+        onFeedTabChange={setFeedTab}
       />
 
-      {/* Expand chevron (when collapsed) */}
       {(feedCollapsed || activeView === 'map') && (
         <button
           className="feed-expand"
@@ -155,16 +185,14 @@ function App() {
         </button>
       )}
 
-      {/* Panel 3 — Map Panel */}
       <div className={`map-panel ${panelOpen ? 'with-feed' : 'full'}`}>
-        {/* Map top nav */}
         <div className="map-nav">
           <div className="map-nav-tabs">
             {[
-              { key: 'notes', label: '🌊 notes', },
-              { key: 'security', label: '⚡ security' },
-              { key: 'summary', label: 'summary' },
-            ].map(t => (
+              { key: 'notes', label: 'Notes' },
+              { key: 'security', label: '⚡ Security' },
+              { key: 'summary', label: 'Summary' },
+            ].map((t) => (
               <button
                 key={t.key}
                 className={`map-nav-tab ${navTab === t.key ? 'active' : ''}`}
@@ -175,12 +203,11 @@ function App() {
             ))}
           </div>
           <div className="map-nav-info">
-            <span className="map-location">{geocoder.location.label}</span>
+            <span className="map-location">{center?.label ?? 'Campus'}</span>
             <span className="map-clock">{clock}</span>
           </div>
         </div>
 
-        {/* Map */}
         {loading ? (
           <div className="loading-state">
             <div className="loading-pulse" />
@@ -194,46 +221,54 @@ function App() {
             onSignalClick={(s) => setSelectedSignal(s)}
             onReportClick={(r) => setSelectedReport(r)}
             dominantMood={dominantMood}
-            mode={mode === 'summary' ? 'summary' : mode}
-            center={geocoder.location}
+            mode={navTab === 'summary' ? 'summary' : navTab === 'notes' ? 'signals' : 'static'}
+            center={center}
+            theme={theme}
+            onMapReady={handleMapReady}
           />
         )}
 
-        {/* Floating buttons */}
-        <div className="map-float-btns">
+        {mapInstance && prefsTabActive && (
+          <RadiusPreview
+            map={mapInstance}
+            center={center}
+            radius={radiusMeters}
+            visible={prefsTabActive}
+          />
+        )}
+
+        <div className="map-float-btns map-float-top-right">
           <button
             className="float-btn add-btn"
             onClick={() => {
-              // Drop at map center
-              const pos = { lat: geocoder.location.lat, lng: geocoder.location.lng };
-              if (mode === 'static') setShowStaticForm(pos);
+              const pos = { lat: center.lat, lng: center.lng };
+              if (navTab === 'security') setShowStaticForm(pos);
               else setDropPosition(pos);
             }}
-            title={mode === 'static' ? 'report incident' : 'drop signal'}
+            title={navTab === 'security' ? 'report incident' : 'drop signal'}
           >
             +
           </button>
-          <button
-            className="float-btn ai-btn"
-            onClick={() => setShowAI(true)}
-            title="wavelength ai"
-          >
-            ⬜
-          </button>
         </div>
 
-        {/* Tap hint */}
+        <div className="map-float-btns map-float-bottom-right">
+          <button className="float-btn zoom-btn" onClick={zoomIn} title="zoom in">+</button>
+          <button className="float-btn zoom-btn" onClick={zoomOut} title="zoom out">−</button>
+          <button className="float-btn ai-btn" onClick={() => setShowAI(true)} title="wavelength ai">🤖</button>
+        </div>
+
         <div className="tap-hint">
-          <span>{mode === 'static' ? 'tap the map to report an incident' : 'tap the map to drop a signal'}</span>
+          <span>{navTab === 'security' ? 'tap the map to report an incident' : 'tap the map to drop a signal'}</span>
         </div>
       </div>
 
-      {/* ── Modals ── */}
       {dropPosition && (
         <DropSignalForm
           position={dropPosition}
+          onPositionChange={handlePositionChange}
           onDrop={handleDrop}
           onClose={() => setDropPosition(null)}
+          mapFlyTo={flyTo}
         />
       )}
 
@@ -257,14 +292,14 @@ function App() {
       {showStaticForm && (
         <StaticReportForm
           position={showStaticForm}
+          onPositionChange={handleStaticFormPositionChange}
           onSubmit={handleSubmitReport}
           onClose={() => setShowStaticForm(null)}
+          mapFlyTo={flyTo}
         />
       )}
 
-      {showAI && (
-        <AIChatbox onClose={() => setShowAI(false)} />
-      )}
+      {showAI && <AIChatbox onClose={() => setShowAI(false)} />}
     </div>
   );
 }

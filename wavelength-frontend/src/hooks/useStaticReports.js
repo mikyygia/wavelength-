@@ -3,26 +3,33 @@ import axios from 'axios';
 
 const API = 'http://localhost:3001/api';
 
-export function useStaticReports() {
+export function useStaticReports(center, radiusMeters, filtersOverride) {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({
         timeframe: '24h',
         type: 'all',
-        status: 'all',
+        status: 'all', // include resolved for feed + map
     });
 
     const fetchReports = useCallback(async () => {
+        if (!center) return;
         try {
-            const params = new URLSearchParams(filters);
-            const res = await axios.get(`${API}/static?${params}`);
+            const params = {
+                ...filters,
+                ...(filtersOverride || {}),
+                lat: center.lat,
+                lng: center.lng,
+                radius: radiusMeters ?? 2000,
+            };
+            const res = await axios.get(`${API}/static?${new URLSearchParams(params)}`);
             setReports(res.data);
         } catch (err) {
             console.error('failed to fetch static reports:', err);
         } finally {
             setLoading(false);
         }
-    }, [filters]);
+    }, [center?.lat, center?.lng, radiusMeters, filters, filtersOverride]);
 
     useEffect(() => {
         fetchReports();

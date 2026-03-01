@@ -8,14 +8,32 @@ const router = Router();
 const VALID_MOODS = ['anxious', 'calm', 'happy', 'sad', 'overwhelmed', 'energized', 'lonely', 'grateful'];
 const VALID_REACTIONS = ['felt', 'hug', 'heart'];
 
-// ─── GET /api/signals ── active (non-expired) signals ───
+// Haversine distance in meters
+function haversine(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const toRad = d => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ─── GET /api/signals ── active (non-expired) signals, optional lat/lng/radius (meters) ───
 router.get('/', (req, res) => {
     try {
-        const signals = db.prepare(`
+        let signals = db.prepare(`
       SELECT * FROM signals
       WHERE expires_at > datetime('now')
       ORDER BY created_at DESC
     `).all();
+
+        const { lat, lng, radius } = req.query;
+        if (lat != null && lng != null && radius != null) {
+            const centerLat = parseFloat(lat);
+            const centerLng = parseFloat(lng);
+            const maxDist = parseFloat(radius);
+            signals = signals.filter(s => haversine(centerLat, centerLng, s.lat, s.lng) <= maxDist);
+        }
         res.json(signals);
     } catch (err) {
         console.error('GET /api/signals error:', err);

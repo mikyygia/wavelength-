@@ -1,7 +1,13 @@
-import { useMapEvents, MapContainer, TileLayer, Marker } from 'react-leaflet';
+import { useEffect } from 'react';
+import { useMapEvents, MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { moodColors, moodEmojis, getSignalOpacity } from '../utils/moodColors';
 import { severityColors, staticTypes } from '../utils/staticUtils';
+
+const TILE_URLS = {
+    dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+};
 
 // Fix default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -69,6 +75,16 @@ function MapClickHandler({ onMapClick }) {
     return null;
 }
 
+// Expose Leaflet map instance to parent for flyTo / RadiusPreview
+function MapRefSetter({ onMapReady }) {
+    const map = useMap();
+    useEffect(() => {
+        onMapReady?.(map);
+        return () => onMapReady?.(null);
+    }, [map, onMapReady]);
+    return null;
+}
+
 export default function CampusMap({
     signals,
     reports,
@@ -78,6 +94,8 @@ export default function CampusMap({
     dominantMood,
     mode,
     center,
+    theme = 'light',
+    onMapReady,
 }) {
     const glowColor = dominantMood ? moodColors[dominantMood] : '#C0CEEB';
     const showSignals = mode !== 'static';
@@ -92,13 +110,15 @@ export default function CampusMap({
                 center={[center.lat, center.lng]}
                 zoom={16}
                 className="campus-map"
-                zoomControl={true}
+                zoomControl={false}
                 key={`${center.lat}-${center.lng}`}
             >
                 <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    key={theme}
+                    attribution='&copy; OpenStreetMap &copy; CARTO'
+                    url={TILE_URLS[theme] || TILE_URLS.light}
                 />
+                {onMapReady && <MapRefSetter onMapReady={onMapReady} />}
                 <MapClickHandler onMapClick={onMapClick} />
 
                 {/* Signal pins */}

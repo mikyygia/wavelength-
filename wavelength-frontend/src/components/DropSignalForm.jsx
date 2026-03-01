@@ -1,11 +1,25 @@
 import { useState } from 'react';
 import { moodList, moodEmojis, moodColors } from '../utils/moodColors';
+import FormAddressSearch from './shared/FormAddressSearch';
 
-export default function DropSignalForm({ onDrop, position, onClose }) {
+export default function DropSignalForm({ onDrop, position, onClose, onPositionChange, mapFlyTo }) {
     const [mood, setMood] = useState('');
     const [note, setNote] = useState('');
     const [songUrl, setSongUrl] = useState('');
     const [submitting, setSubmitting] = useState(false);
+
+    const useMyLocation = () => {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const { latitude: lat, longitude: lng } = pos.coords;
+                if (mapFlyTo) mapFlyTo(lat, lng, 17);
+                if (onPositionChange) onPositionChange({ lat, lng });
+            },
+            (err) => console.error('location error:', err),
+            { enableHighAccuracy: true, timeout: 5000 }
+        );
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -34,9 +48,23 @@ export default function DropSignalForm({ onDrop, position, onClose }) {
                     <button className="close-btn" onClick={onClose}>✕</button>
                 </div>
 
-                <div className="form-location">
-                    <span className="label">location</span>
-                    <span className="coords">{position.lat.toFixed(4)}, {position.lng.toFixed(4)}</span>
+                <div className="form-location-block">
+                    <button type="button" className="form-use-location-btn" onClick={useMyLocation}>
+                        📍 use my location
+                    </button>
+                    <FormAddressSearch
+                        onSelect={(r) => {
+                            if (onPositionChange) onPositionChange(r);
+                            if (mapFlyTo) mapFlyTo(r.lat, r.lng, 17);
+                        }}
+                        placeholder="search address..."
+                    />
+                    <div className="form-location">
+                        <span className="label">lat</span>
+                        <span className="coords">{position.lat.toFixed(4)}</span>
+                        <span className="label">lng</span>
+                        <span className="coords">{position.lng.toFixed(4)}</span>
+                    </div>
                 </div>
 
                 <form onSubmit={handleSubmit}>

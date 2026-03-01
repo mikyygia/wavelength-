@@ -5,7 +5,7 @@ export default function AddressSearch({ geocoder }) {
 
     return (
         <div className="address-search">
-            <div className="search-label">campus / location</div>
+            <div className="search-label">location</div>
             <div className="search-current">
                 <span className="search-current-label">📍 {location.label}</span>
                 <button className="search-reset" onClick={resetToDefault}>reset</button>
@@ -14,7 +14,7 @@ export default function AddressSearch({ geocoder }) {
             <div className="search-input-wrap">
                 <input
                     className="signal-input search-input"
-                    placeholder="search campus or address..."
+                    placeholder="where to next...?"
                     value={query}
                     onChange={e => search(e.target.value)}
                 />

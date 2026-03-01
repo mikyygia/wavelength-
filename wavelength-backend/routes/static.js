@@ -125,9 +125,17 @@ router.patch('/:id/resolve', (req, res) => {
 // ─── GET /api/static/instability ── instability index ───
 router.get('/instability', (req, res) => {
     try {
-        const reports = db.prepare(`
+        let reports = db.prepare(`
       SELECT * FROM static_reports WHERE status != 'resolved'
     `).all();
+
+        const { lat, lng, radius } = req.query;
+        if (lat != null && lng != null && radius != null) {
+            const centerLat = parseFloat(lat);
+            const centerLng = parseFloat(lng);
+            const maxDist = parseFloat(radius);
+            reports = reports.filter(r => haversine(centerLat, centerLng, r.lat, r.lng) <= maxDist);
+        }
 
         let score = 0;
         const now = Date.now();
@@ -146,8 +154,8 @@ router.get('/instability', (req, res) => {
         let label, color;
         if (score <= 20) { label = 'calm'; color = '#C0CEEB'; }
         else if (score <= 40) { label = 'watch'; color = '#F9BD33'; }
-        else if (score <= 60) { label = 'elevated'; color = '#FF8844'; }
-        else if (score <= 80) { label = 'high'; color = '#FF4444CC'; }
+        else if (score <= 60) { label = 'elevated'; color = '#F97316'; }
+        else if (score <= 80) { label = 'high'; color = '#FF4444'; }
         else { label = 'critical'; color = '#FF4444'; }
 
         res.json({ score, label, color, breakdown, activeReports: reports.length });
