@@ -10,10 +10,9 @@ const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 // Dataset: Crime Data from 2020 to Present
 // https://data.lacity.org/resource/2nrs-mtv8.json
 const SOCRATA_BASE = 'https://data.lacity.org/resource/2nrs-mtv8.json';
-
-// Bounding box delta in degrees (~0.018° ≈ 2km at this latitude)
-const LAT_DELTA = 0.018;
-const LNG_DELTA = 0.022;
+const SOCRATA_APP_TOKEN = process.env.SOCRATA_APP_TOKEN?.trim();
+const DEFAULT_RADIUS_METERS = 2000;
+const MAX_RADIUS_METERS = 10000;
 
 // Category mapping from LAPD crime codes to our internal types
 function mapCrimeType(desc = '') {
@@ -62,7 +61,7 @@ function normalizeCrime(raw) {
 // GET /api/crimes?lat=&lng=&radius=&limit=
 router.get('/', async (req, res) => {
     try {
-        const { lat, lng, limit = 40 } = req.query;
+        const { lat, lng, radius, limit = 40 } = req.query;
 
         if (!lat || !lng) {
             return res.status(400).json({ error: 'lat and lng required' });
@@ -70,7 +69,15 @@ router.get('/', async (req, res) => {
 
         const centerLat = parseFloat(lat);
         const centerLng = parseFloat(lng);
-        const cacheKey = `${centerLat.toFixed(3)},${centerLng.toFixed(3)}`;
+        if (Number.isNaN(centerLat) || Number.isNaN(centerLng)) {
+            return res.status(400).json({ error: 'lat and lng must be valid numbers' });
+        }
+
+        const requestedRadius = parseInt(radius, 10);
+        const radiusMeters = Number.isNaN(requestedRadius)
+            ? DEFAULT_RADIUS_METERS
+            : Math.min(Math.max(requestedRadius, 100), MAX_RADIUS_METERS);
+        const cacheKey = `${centerLat.toFixed(3)},${centerLng.toFixed(3)},${radiusMeters}`;
 
         // Check cache
         const cached = CACHE.get(cacheKey);
@@ -78,11 +85,15 @@ router.get('/', async (req, res) => {
             return res.json(cached.data);
         }
 
-        // Build Socrata SoQL bounding box query
-        const minLat = centerLat - LAT_DELTA;
-        const maxLat = centerLat + LAT_DELTA;
-        const minLng = centerLng - LNG_DELTA;
-        const maxLng = centerLng + LNG_DELTA;
+        // Build bounding box from radius (meters)
+        const metersPerDegreeLat = 111320;
+        const metersPerDegreeLng = 111320 * Math.cos((centerLat * Math.PI) / 180);
+        const latDelta = radiusMeters / metersPerDegreeLat;
+        const lngDelta = radiusMeters / Math.max(1, Math.abs(metersPerDegreeLng));
+        const minLat = centerLat - latDelta;
+        const maxLat = centerLat + latDelta;
+        const minLng = centerLng - lngDelta;
+        const maxLng = centerLng + lngDelta;
 
         // Get last 90 days
         const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] + 'T00:00:00';
@@ -95,17 +106,18 @@ router.get('/', async (req, res) => {
 
         const url = `${SOCRATA_BASE}?${params}`;
 
-        const response = await fetch(url, {
-            headers: {
-                'Accept': 'application/json',
-                'X-App-Token': '', // optional Socrata token — empty = unauthenticated (1000/hr)
-            },
-            signal: AbortSignal.timeout(8000),
-        });
+        const headers = { Accept: 'application/json' };
+        if (SOCRATA_APP_TOKEN) {
+            headers['X-App-Token'] = SOCRATA_APP_TOKEN;
+        }
+        const response = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
 
         if (!response.ok) {
             console.warn(`[crimes] Socrata returned ${response.status}`);
-            return res.json([]);
+            return res.status(502).json({
+                error: 'official crime provider unavailable',
+                upstreamStatus: response.status,
+            });
         }
 
         const raw = await response.json();
@@ -122,9 +134,11 @@ router.get('/', async (req, res) => {
 
         res.json(normalized);
     } catch (err) {
+        const isTimeout = err?.name === 'TimeoutError' || err?.name === 'AbortError';
         console.error('[crimes] fetch error:', err.message);
-        // Never crash the app — just return empty
-        res.json([]);
+        res.status(isTimeout ? 504 : 502).json({
+            error: isTimeout ? 'official crime provider timeout' : 'failed to fetch official crimes',
+        });
     }
 });
 
