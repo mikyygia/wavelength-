@@ -81,7 +81,7 @@ export default function SecurityTab({
                 <div className="pulse-stats-row">
                     <span className="pulse-stat">
                         <span className="pulse-stat-val">{activeReports}</span>
-                        <span className="pulse-stat-label">community</span>
+                        <span className="pulse-stat-label">user reports</span>
                     </span>
                     <span className="pulse-stat-divider">·</span>
                     <span className="pulse-stat official">
@@ -137,10 +137,10 @@ export default function SecurityTab({
             {/* Community Reports */}
             <div className="security-section">
                 <div className="security-section-header">
-                    ── community reports ({filteredCommunity.length}) ──
+                    ── user-reported alerts ({filteredCommunity.length}) ──
                 </div>
                 {filteredCommunity.length === 0 && (
-                    <div className="security-empty">no community reports in this timeframe.</div>
+                    <div className="security-empty">no user-reported alerts in this timeframe.</div>
                 )}
                 {filteredCommunity.map(r => {
                     const typeInfo = staticTypes[r.type] || staticTypes.other;
@@ -155,7 +155,7 @@ export default function SecurityTab({
                             <div className="security-report-content">
                                 <div className="security-report-title-row">
                                     <span className="security-report-title">{typeInfo.icon} {r.title}</span>
-                                    <span className="source-tag community">community</span>
+                                    <span className="source-tag community">user</span>
                                 </div>
                                 <span className="security-report-meta">
                                     {r.location_label || 'unknown location'} · {getTimeAgo(r.created_at)}
@@ -240,7 +240,7 @@ export default function SecurityTab({
                             <div className="security-report-content">
                                 <div className="security-report-title-row">
                                     <span className="security-report-title">{r.title}</span>
-                                    <span className="source-tag community">community</span>
+                                    <span className="source-tag community">user</span>
                                 </div>
                                 <span className="security-report-meta">
                                     {r.location_label || 'unknown location'} · resolved

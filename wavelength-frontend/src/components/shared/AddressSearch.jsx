@@ -1,5 +1,6 @@
-export default function AddressSearch({ geocoder }) {
+export default function AddressSearch({ geocoder, accessibility }) {
     const { query, results, searching, error, search, selectLocation, setRadius, location, resetToDefault } = geocoder;
+    const { fontSize, setFontSize, highContrast, setHighContrast } = accessibility;
 
     const radiusOptions = [500, 1000, 2000, 5000];
 
@@ -50,6 +51,42 @@ export default function AddressSearch({ geocoder }) {
                             {r >= 1000 ? `${r / 1000}km` : `${r}m`}
                         </button>
                     ))}
+                </div>
+            </div>
+
+            <div className="accessibility-opts">
+                <div className="acc-row">
+                    <span className="acc-label">text size:</span>
+                    <div className="acc-options">
+                        <button
+                            className={`acc-btn ${fontSize === 'default' ? 'active' : ''}`}
+                            onClick={() => setFontSize('default')}
+                        >
+                            default
+                        </button>
+                        <button
+                            className={`acc-btn ${fontSize === 'large' ? 'active' : ''}`}
+                            onClick={() => setFontSize('large')}
+                        >
+                            large
+                        </button>
+                        <button
+                            className={`acc-btn ${fontSize === 'xlarge' ? 'active' : ''}`}
+                            onClick={() => setFontSize('xlarge')}
+                        >
+                            x-large
+                        </button>
+                    </div>
+                </div>
+
+                <div className="acc-row">
+                    <span className="acc-label">contrast:</span>
+                    <button
+                        className={`acc-toggle-btn ${highContrast ? 'active' : ''}`}
+                        onClick={() => setHighContrast(!highContrast)}
+                    >
+                        {highContrast ? 'high contrast on' : 'high contrast off'}
+                    </button>
                 </div>
             </div>
         </div>

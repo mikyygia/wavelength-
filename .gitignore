@@ -24,6 +24,7 @@ dist-ssr
 *.sw?
 
 .env
+wavelength-backend/.env
 DEPLOYMENT.md
 MULTIUSER_TEST_PLAN.md
 

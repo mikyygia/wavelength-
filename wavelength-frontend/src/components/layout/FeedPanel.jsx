@@ -249,7 +249,7 @@ function SummaryTab({
 
             <div className="summary-snapshot">
                 <div className="summary-snapshot-title">
-                    {totalIncidents} community reports
+                    {totalIncidents} user-reported alerts
                 </div>
                 <div className="summary-snapshot-grid">
                     {snapshotRows.length === 0 && <div className="summary-snapshot-empty">none</div>}
@@ -271,7 +271,7 @@ function SummaryTab({
             </div>
 
             <div className="summary-nearby">
-                <div className="summary-nearby-title">Nearby — community reports</div>
+                <div className="summary-nearby-title">Nearby — user-reported alerts</div>
                 <div className="summary-nearby-list">
                     {nearby.map(item => {
                         const typeInfo = staticTypes[item.type] || staticTypes.other;

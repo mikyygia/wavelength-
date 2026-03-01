@@ -8,12 +8,14 @@ import Sidebar from './components/layout/Sidebar';
 import FeedPanel from './components/layout/FeedPanel';
 import AIChatbox from './components/shared/AIChatbox';
 import AddressSearch from './components/shared/AddressSearch';
+import { MapPin, Clock } from 'lucide-react';
 import { useSignals } from './hooks/useSignals';
 import { useMoodAtmosphere } from './hooks/useMoodAtmosphere';
 import { useStaticReports } from './hooks/useStaticReports';
 import { useInstability } from './hooks/useInstability';
 import { useGeocoder } from './hooks/useGeocoder';
 import { useTheme } from './hooks/useTheme';
+import { useAccessibility } from './hooks/useAccessibility';
 import { useMyDrops } from './hooks/useMyDrops';
 import { useMapRef } from './hooks/useMapRef';
 import { useCrimeNews } from './hooks/useCrimeNews';
@@ -30,6 +32,7 @@ function App() {
   const { reports, submitReport, confirmReport, resolveReport } = useStaticReports(center, radiusMeters);
   const instability = useInstability(center, radiusMeters);
   const { theme, toggleTheme } = useTheme();
+  const accessibility = useAccessibility();
   const { drops: myDrops, addDrop, editDrop, deleteDrop } = useMyDrops();
   const { setMap, flyTo, zoomIn, zoomOut } = useMapRef();
   const { articles: crimeNews, loading: crimeNewsLoading, error: crimeNewsError } = useCrimeNews(center);
@@ -179,7 +182,7 @@ function App() {
             <span>preferences</span>
             <button className="close-btn" onClick={() => setShowPrefs(false)}>✕</button>
           </div>
-          <AddressSearch geocoder={geocoder} />
+          <AddressSearch geocoder={geocoder} accessibility={accessibility} />
         </div>
       )}
 
@@ -211,8 +214,14 @@ function App() {
             ))}
           </div>
           <div className="map-nav-info">
-            <span className="map-location">{center?.label ?? 'Area'}</span>
-            <span className="map-clock">{clock}</span>
+            <span className="map-location">
+              <MapPin size={12} className="nav-icon" />
+              {center?.label ?? 'Area'}
+            </span>
+            <span className="map-clock">
+              <Clock size={12} className="nav-icon" />
+              {clock}
+            </span>
           </div>
         </div>
 
