@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 
 const STORAGE_KEY = 'wl-my-drops';
+const HIDDEN_KEY = 'wl-hidden-items';
 
 function loadDrops() {
     try {
@@ -13,11 +14,34 @@ function loadDrops() {
 function saveDrops(drops) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(drops));
-    } catch { }
+    } catch {
+        // ignore localStorage write failures
+    }
+}
+
+function loadHidden() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(HIDDEN_KEY) || '{}');
+        return {
+            signal: Array.isArray(parsed.signal) ? parsed.signal : [],
+            static: Array.isArray(parsed.static) ? parsed.static : [],
+        };
+    } catch {
+        return { signal: [], static: [] };
+    }
+}
+
+function saveHidden(hidden) {
+    try {
+        localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden));
+    } catch {
+        // ignore localStorage write failures
+    }
 }
 
 export function useMyDrops() {
     const [drops, setDrops] = useState(loadDrops);
+    const [hiddenIds, setHiddenIds] = useState(loadHidden);
 
     const addDrop = useCallback((kind, data) => {
         setDrops(prev => {
@@ -52,12 +76,27 @@ export function useMyDrops() {
     }, []);
 
     const deleteDrop = useCallback((dropId) => {
-        setDrops(prev => {
-            const updated = prev.filter(d => d.id !== dropId);
-            saveDrops(updated);
-            return updated;
+        setDrops(prevDrops => {
+            const target = prevDrops.find(d => d.id === dropId);
+            const updatedDrops = prevDrops.filter(d => d.id !== dropId);
+            saveDrops(updatedDrops);
+
+            if (target?.kind && target?.data?.id) {
+                setHiddenIds(prevHidden => {
+                    const bucket = target.kind === 'signal' ? 'signal' : 'static';
+                    const hiddenId = String(target.data.id);
+                    const nextBucket = prevHidden[bucket].includes(hiddenId)
+                        ? prevHidden[bucket]
+                        : [...prevHidden[bucket], hiddenId];
+                    const nextHidden = { ...prevHidden, [bucket]: nextBucket };
+                    saveHidden(nextHidden);
+                    return nextHidden;
+                });
+            }
+
+            return updatedDrops;
         });
     }, []);
 
-    return { drops, addDrop, editDrop, deleteDrop };
+    return { drops, hiddenIds, addDrop, editDrop, deleteDrop };
 }

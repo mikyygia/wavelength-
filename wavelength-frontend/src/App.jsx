@@ -33,9 +33,13 @@ function App() {
   const instability = useInstability(center, radiusMeters);
   const { theme, toggleTheme } = useTheme();
   const accessibility = useAccessibility();
-  const { drops: myDrops, addDrop, editDrop, deleteDrop } = useMyDrops();
+  const { drops: myDrops, hiddenIds, addDrop, editDrop, deleteDrop } = useMyDrops();
   const { setMap, flyTo, zoomIn, zoomOut } = useMapRef();
   const { articles: crimeNews, loading: crimeNewsLoading, error: crimeNewsError } = useCrimeNews(center);
+  const hiddenSignalSet = new Set(hiddenIds.signal.map(String));
+  const hiddenStaticSet = new Set(hiddenIds.static.map(String));
+  const visibleSignals = signals.filter((s) => !hiddenSignalSet.has(String(s.id)));
+  const visibleReports = reports.filter((r) => !hiddenStaticSet.has(String(r.id)));
 
   const [mode, setMode] = useState('all'); // 'all' | 'signals' | 'static' for Activity tab
   const [activeView, setActiveView] = useState('dashboard');
@@ -48,10 +52,7 @@ function App() {
   const [selectedSignal, setSelectedSignal] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [showStaticForm, setShowStaticForm] = useState(null);
-  const [mapInstance, setMapInstance] = useState(null);
-
   const handleMapReady = useCallback((map) => {
-    setMapInstance(map);
     setMap(map);
   }, [setMap]);
 
@@ -151,8 +152,8 @@ function App() {
       />
 
       <FeedPanel
-        signals={signals}
-        reports={reports}
+        signals={visibleSignals}
+        reports={visibleReports}
         crimeNews={crimeNews}
         crimeNewsLoading={crimeNewsLoading}
         crimeNewsError={crimeNewsError}
@@ -236,8 +237,8 @@ function App() {
           </div>
         ) : (
           <CampusMap
-            signals={signals}
-            reports={reports}
+            signals={visibleSignals}
+            reports={visibleReports}
             onMapClick={handleMapClick}
             onSignalClick={(s) => setSelectedSignal(s)}
             onReportClick={(r) => setSelectedReport(r)}
